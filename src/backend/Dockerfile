@@ -2,6 +2,9 @@ FROM dataelement/bisheng-backend:base.v11
 
 WORKDIR /app
 
+# Transport for the optional, fixed-command ForgeMind controller integration.
+RUN command -v ssh >/dev/null || (apt-get update && apt-get install -y --no-install-recommends openssh-client && rm -rf /var/lib/apt/lists/*)
+
 # 先装依赖再复制源码，利用 Docker 层缓存：uv.lock 不变时此层命中缓存
 COPY ./pyproject.toml ./uv.lock ./
 RUN uv sync --frozen --no-dev && uv cache clean

@@ -10,7 +10,8 @@ import { bsConfirm } from "@/components/bs-ui/alertDialog/useConfirm";
 import { useSelectLabels } from "@/components/bs-comp/formFields/useSelectLabels";
 import { locationContext } from "@/contexts/locationContext";
 import i18next from "i18next";
-import { GanttChartIcon, Lock, MoonStar, Sun } from "lucide-react";
+import { GanttChartIcon, Lock, MoonStar, Server, Sun } from "lucide-react";
+import { useHostAccess } from "@/controllers/API/forgemind";
 
 import { useDshBrowserConfig } from "@/hooks/useDshBrowserConfig";
 import { Tooltip, TooltipProvider } from "@bisheng/ui";
@@ -51,6 +52,7 @@ export default function MainLayout() {
     const { appConfig } = useContext(locationContext);
 
     const { user, setUser } = useContext(userContext);
+    const { access: hostAccess } = useHostAccess();
     const { language, options, changLanguage, t } = useLanguage(user);
     const selectLabels = useSelectLabels();
     const languageOptions = Object.entries(options).map(([value, label]) => ({ value, label }));
@@ -264,6 +266,12 @@ export default function MainLayout() {
                                 >
                                     <Outlined.Application />
                                     <span>{t("menu.skills")}</span>
+                                </NavLink>
+                            )}
+                            {hostAccess.data && (
+                                <NavLink to="/forgemind/hosts" className={pendingNavClass("forgemind")}>
+                                    <Server />
+                                    <span>{t("hosts.heading")}</span>
                                 </NavLink>
                             )}
                             {showAdminNav("knowledge") && (
