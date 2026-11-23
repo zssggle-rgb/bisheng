@@ -69,8 +69,16 @@ class Manager:
             online = {a["worker"]: a["online"] for a in agents if isinstance(a.get("online"), bool)}
         except (KeyError, ValueError, OSError, subprocess.SubprocessError):
             online = {}
+        now = time.time()
         for row in rows:
             row["online"] = online.get(row["name"])
+            if row["online"] is None and row["seen"]:
+                # Autoloop host/state.ts only lists rule-bound agents. For an
+                # unassigned worker use its Hub stamp and the same 2 min + SEEN_EVERY window.
+                with contextlib.suppress(ValueError, TypeError):
+                    stamp = datetime.fromisoformat(row["seen"].replace("Z", "+00:00"))
+                    if stamp.tzinfo is not None:
+                        row["online"] = now - stamp.timestamp() <= 180
         return rows
 
     def binding(self, name):

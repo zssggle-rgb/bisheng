@@ -33,6 +33,12 @@ Install `host_manager.py` on the Autoloop controller as that executable. Run it 
 
 Set the real paths and network interface at the site. The controller's own OpenSSH alias `hypervisor` uses a pinned host key and the existing libvirt operator account. The hypervisor needs the dual-NIC ForgeMind `create-guest.sh` with its adjacent `user_network.py`, the allowed template pool, and the controller's **public** management key. The controller needs the matching private management identity and ForgeMind's `connect.py`. Optionally specify the site's approved `model_settings` path on the controller. Provision `state` as a directory writable only by the controller account. It stores private creation receipts and per-instance SSH profiles. Hub registration and libvirt stay authoritative for live state.
 
+## Deploying on BiSheng v3.0.2
+
+Build the administrator frontend against the site's **v3.0.2** source and lockfile. Its management-session API differs from the v3.1 frontend. Apply the host menu and route changes to the release layout and routes, copy the ForgeMind page and API client, and merge only the `hosts` translation object into each release locale. Keep the release's original dashboards and user workspace.
+
+Backport the ForgeMind API package and register its router on the existing v1 router. The v3.0.2 middleware and request client use explicit management route lists. Apply [the v3.0.2 scope patch](compat/3.0.2-management-scope.patch) to both before deployment. The owner and selected management tenant must match. Writes carry the native expected-tenant header and fail closed if the management selection changes. Verify the existing dashboard, the authenticated owner menu, member denial, and a creation on an allocated address after deployment.
+
 ## Existing hosts and recovery
 
 Any registered worker is visible, including an external worker without a libvirt domain. Same-name domains can be read. For an existing ForgeMind acceptance receipt, set `bindings[worker].receipt` to the controller-local JSON path. The reader checks `hub_worker` and `vm.domain` and uses the recorded `vm.uuid` and image. For older hosts, supply the verified `uuid` and optional `image` directly. To enable connection checks add the pinned `ssh_config` resolving the worker name to its actual guest. Hosts created through the page receive their binding automatically.

@@ -45,6 +45,16 @@ class HostManagerTest(unittest.TestCase):
         with patch("host_manager.run", side_effect=OSError):
             self.assertEqual(len(self.m.listing()), 2)
 
+    def test_ruleless_worker_uses_the_native_heartbeat_window(self):
+        with sqlite3.connect(self.db) as db:
+            db.execute("UPDATE seen SET seen_at='1970-01-01T00:01:00.000Z' WHERE kind='worker'")
+        with patch("host_manager.run", return_value='{"agents":[]}'):
+            for now, expected in [(240, True), (241, False)]:
+                with self.subTest(now=now), patch("host_manager.time.time", return_value=now):
+                    row, external = self.m.listing()
+                    self.assertIs(row["online"], expected)
+                    self.assertIsNone(external["online"])
+
     def test_persistent_configuration_and_live_fields(self):
         with patch.object(self.m, "virsh", side_effect=self.virsh):
             data = self.m.dispatch({"action":"detail", "name":self.name})
