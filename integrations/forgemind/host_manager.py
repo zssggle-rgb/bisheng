@@ -77,7 +77,14 @@ class Manager:
         path = self.state / ("instance-" + name + ".json")
         if path.is_file():
             return json.loads(path.read_text())
-        return self.cfg.get("bindings", {}).get(name, {})
+        binding = self.cfg.get("bindings", {}).get(name, {})
+        if "receipt" not in binding:
+            return binding
+        receipt = json.loads(Path(binding["receipt"]).expanduser().read_text())
+        vm = receipt["vm"]
+        if receipt["hub_worker"] != name or vm["domain"] != name:
+            raise Problem("identity_changed")
+        return dict(binding, uuid=str(UUID(vm["uuid"])), image=Path(receipt["image"]).name)
 
     def summaries(self):
         # One SSH session for all cards. The Hub list renders independently.

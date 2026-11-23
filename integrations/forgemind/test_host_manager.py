@@ -71,6 +71,16 @@ class HostManagerTest(unittest.TestCase):
             with self.assertRaisesRegex(Problem, "identity_changed"):
                 self.m.maintain("rename", req)
 
+    def test_existing_receipt_binds_only_its_recorded_worker(self):
+        path = self.base / "acceptance.json"
+        path.write_text(json.dumps({"vm":{"uuid":self.uid,"domain":self.name},
+                                    "hub_worker":self.name,"image":"/templates/worker.qcow2"}))
+        self.m.cfg["bindings"] = {n:{"receipt":str(path)} for n in (self.name,"external")}
+        binding = self.m.binding(self.name)
+        self.assertEqual((binding["uuid"],binding["image"]), (self.uid,"worker.qcow2"))
+        with self.assertRaisesRegex(Problem,"identity_changed"):
+            self.m.binding("external")
+
     def test_create_idempotency_and_validation(self):
         req = dict(name="build-new", request_id=str(uuid4()), cpus=4, memory=8, disk=48,
                    image="worker.qcow2", user_ip="198.51.100.7")
