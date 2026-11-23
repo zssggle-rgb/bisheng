@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'src/backend/**'
+      - 'integrations/forgemind/**'
       - 'src/frontend/packages/api-client/**'
       - '.github/workflows/tenant-context-quality.yml'
   workflow_dispatch:
@@ -20,7 +21,6 @@ jobs:
         working-directory: src/backend
     env:
       PYTHONPATH: .
-      config: ${{ runner.temp }}/tenant-context-ci.yaml
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -30,10 +30,15 @@ jobs:
       - name: Sync dependencies
         run: uv sync --frozen
       - name: Prepare isolated test configuration
-        run: python -c 'import os, pathlib; pathlib.Path(os.environ["config"]).write_text("{}\n")'
+        run: |
+          echo "config=$RUNNER_TEMP/tenant-context-ci.yaml" >> "$GITHUB_ENV"
+          printf '{}\n' > "$RUNNER_TEMP/tenant-context-ci.yaml"
+      - name: Verify host controller
+        run: uv run python -m unittest discover -s ../../integrations/forgemind
       - name: Verify actual routes, generated metadata and tenant boundaries
         run: >-
           uv run pytest -q
+          test/forgemind/test_host_routes.py
           test/admin/test_request_scope_registry.py
           test/admin/test_request_scope_admission.py
           test/admin/test_request_scope_bootstrap.py
