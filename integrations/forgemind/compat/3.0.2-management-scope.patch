@@ -1,0 +1,16 @@
+--- a/src/frontend/platform/src/controllers/managementScope.ts
++++ b/src/frontend/platform/src/controllers/managementScope.ts
+@@ -24,2 +24,3 @@
+   const rules: [readonly string[], RegExp][] = [
++    [['POST','PUT'], /^\/api\/v1\/forgemind\/hosts(?:\/.*)?$/],
+     [['POST', 'DELETE'], /^\/api\/v1\/skill\/template\/(?:create|[0-9]+)$/],
+--- a/src/backend/bisheng/common/middleware/admin_scope.py
++++ b/src/backend/bisheng/common/middleware/admin_scope.py
+@@ -30,2 +30,3 @@
+ MANAGEMENT_API_PREFIXES: tuple[str, ...] = (
++    "/api/v1/forgemind/hosts",
+     "/api/v1/skill/template",
+@@ -64,2 +65,3 @@
+ _EXPECTED_SCOPE_WRITES = (
++    (frozenset({"POST", "PUT"}), r"/api/v1/forgemind/hosts(?:/.*)?"),
+     (frozenset({"POST", "DELETE"}), r"/api/v1/skill/template/(?:create|[0-9]+)"),

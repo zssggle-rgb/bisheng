@@ -49,6 +49,7 @@ from bisheng.dsh_market.api.router import router as dsh_market_router
 from bisheng.evaluation.api.router import router as evaluation_router
 from bisheng.finetune.api.finetune import router as finetune_router
 from bisheng.finetune.api.server import router as server_router
+from bisheng.forgemind.api.router import router as forgemind_router
 from bisheng.knowledge.api.router import (
     knowledge_router,
     knowledge_space_router,
@@ -178,6 +179,7 @@ router.include_router(commercial_license_router, request_scope=S.PLATFORM)
 router.include_router(admin_router, request_scope=S.IDENTITY)
 router.include_router(approval_router, request_scope=S.PERSONAL)
 router.include_router(brand_router, request_scope=S.PLATFORM)
+router.include_router(forgemind_router, request_scope=S.TENANT)
 router.include_router(sensitive_word_policy_router, request_scope=S.TENANT)
 # Open API management face (features/v3.0.0-beta1/053): service accounts,
 # personal tokens, scope catalogue and skill-pack distribution — session auth,
