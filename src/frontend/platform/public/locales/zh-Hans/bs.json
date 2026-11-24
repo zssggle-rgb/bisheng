@@ -1,5 +1,6 @@
 {
   "fmTeam": {
+    "identity_pending": "该项目助手尚未核验企业成员身份，可重新保存核验",
     "recipient": "受邀飞书账号",
     "recipientHint": "企业邮箱、手机号或本助手的 Open ID",
     "confirmIdentity": "确认绑定扫码人 {{name}}",

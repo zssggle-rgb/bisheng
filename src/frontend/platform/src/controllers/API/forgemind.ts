@@ -52,7 +52,7 @@ export type Assignment = {
 };
 export type ManagedProject = {
   id: string; name: string; repository: string; assistant: string; assistantName: string; knowledgeRole?: string;
-  version: string; features: Feature[]; members: Assignment[]; legacy: { key: string; name: string }[];
+  version: string; features: Feature[]; members: Assignment[]; legacy: { key: string; name: string; features: Feature[]; dev: string }[];
 };
 export type ProjectAssistant = { id: string; name: string; sources: Record<string, string> };
 type TeamDirectory = { projects: ManagedProject[]; assistants: ProjectAssistant[] };

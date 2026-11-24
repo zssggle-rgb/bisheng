@@ -85,7 +85,11 @@ function Directory({ scope, mode }: { scope: string; mode: Mode }) {
         {selected !== null && (!isMember || current && currentProject) && <ProjectTeamForm
           key={[selected, activeProject, currentProject?.version].join("/")} initial={currentProject || { ...empty, id: selected }}
           user={isMember ? current?.user : undefined} users={users.data} hosts={choices} assistants={assistants}
-          saved={async id => { await directory.refetch(); if (!isMember) setSelected(id); }} />}
+          saved={async id => {
+            const result = await directory.refetch();
+            if (!isMember) setSelected(id);
+            else if (!result.data?.projects.find(p => p.id === id)?.members.some(r => r.user === current?.user)) setActiveProject("");
+          }} />}
         {!isMember && !currentProject?.assistant && !assistants.length && <p role="status">{t("fmTeam.noAssistant")}</p>}
       </SheetContent></Sheet>
   </div></main>;

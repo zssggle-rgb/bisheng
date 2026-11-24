@@ -1,5 +1,6 @@
 {
   "fmTeam": {
+    "identity_pending": "This assistant has not verified the employee identity. Save to retry.",
     "recipient": "Invited Feishu identity",
     "recipientHint": "Work email, mobile or this app’s Open ID",
     "confirmIdentity": "Confirm identity of {{name}}",

@@ -1,5 +1,6 @@
 {
   "fmTeam": {
+    "identity_pending": "このアシスタントで社員を確認できません。再保存で再試行できます。",
     "recipient": "招待する飛書アカウント",
     "recipientHint": "会社メール、携帯番号またはこのアプリの Open ID",
     "confirmIdentity": "{{name}} の本人確認を承認",

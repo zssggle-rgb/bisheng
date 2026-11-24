@@ -44,7 +44,11 @@ function AssignmentFields({ row, project, hosts, update }: {
       <Picker label={t("fmTeam.test")} value={row.test} choices={options(row.dev)} change={test => update({ ...row, test })} />
     </div>}
     {!row.bound && project.legacy.length > 0 && <Picker label={t("fmTeam.existing")} value={row.legacy || ""}
-      choices={project.legacy.map(x => ({ value: x.key, label: x.name }))} change={legacy => update({ ...row, legacy })} />}
+      choices={project.legacy.map(x => ({ value: x.key, label: x.name }))} change={legacy => {
+        const entry = project.legacy.find(x => x.key === legacy);
+        if (entry) update({ ...row, legacy, confirm: "", features: entry.features.filter(f => project.features.includes(f)),
+          dev: entry.dev || row.dev, test: entry.dev === row.test ? "" : row.test });
+      }} />}
     <small className="text-text-2">{row.feishuName || t(row.bound ? "fmTeam.bound" : "fmTeam.unbound")}
       {row.bound && row.feishuName && " · " + t("fmTeam.bound")}
       {row.features.map(f => " · " + t("fmTeam." + f) + " " + t(row.effective?.[f] ? "fmTeam.active" : "fmTeam.pending")).join("")}</small>
