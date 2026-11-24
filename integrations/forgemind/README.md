@@ -39,6 +39,10 @@ Build the administrator frontend against the site's **v3.0.2** source and lockfi
 
 Backport the ForgeMind API package and register its router on the existing v1 router. The v3.0.2 middleware and request client use explicit management route lists. Apply [the v3.0.2 scope patch](compat/3.0.2-management-scope.patch) to both before deployment. The owner and selected management tenant must match. Writes carry the native expected-tenant header and fail closed if the management selection changes. Verify the existing dashboard, the authenticated owner menu, member denial, and a creation on an allocated address after deployment.
 
+## Member and project management
+
+Deploy the matching ForgeMind project-console code alongside this controller. Run the fixed command with that Python environment and the ForgeMind checkout on its import path. Set `FORGEMIND_PROJECTS_ENABLED=1` on the BiSheng API after configuring the assistant catalog on the controller. The project and member screens share the host page's authorized owner and management tenant. Disabling an account or removing its active membership invokes the same controller to revoke Feishu access. On v3.0.2, backport both screens, the native account creation callback, the account lifecycle hooks and the `fmTeam` locale entries together with the management-scope patch. Commissioning settings and the development-worker QA recipe are described in the ForgeMind repository in `docs/bisheng-member-project-integration.md`.
+
 ## Existing hosts and recovery
 
 Any registered worker is visible, including an external worker without a libvirt domain. Same-name domains can be read. For an existing ForgeMind acceptance receipt, set `bindings[worker].receipt` to the controller-local JSON path. The reader checks `hub_worker` and `vm.domain` and uses the recorded `vm.uuid` and image. For older hosts, supply the verified `uuid` and optional `image` directly. To enable connection checks add the pinned `ssh_config` resolving the worker name to its actual guest. Hosts created through the page receive their binding automatically.

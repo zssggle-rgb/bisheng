@@ -304,6 +304,9 @@ class TenantService:
             raise TenantArchivedNotResumableError()
         became_disabled = prior.status != "disabled" and data.status == "disabled"
 
+        if data.status in ("disabled", "archived"):
+            from bisheng.forgemind.domain.service import revoke_project_tenant
+            await revoke_project_tenant(tenant_id)
         tenant = await TenantDao.aupdate_tenant(tenant_id, status=data.status)
         if not tenant:
             raise TenantNotFoundError()

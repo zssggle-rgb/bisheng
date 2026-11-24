@@ -194,6 +194,8 @@ class UserService:
                 user_id,
                 exc,
             )
+        from bisheng.forgemind.domain.service import revoke_project_user
+        await revoke_project_user(user_id)
 
     @classmethod
     def _normalize_avatar_object_name(cls, avatar: str | None, bucket: str | None = None) -> str | None:

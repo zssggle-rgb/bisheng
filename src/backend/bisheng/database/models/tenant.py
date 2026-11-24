@@ -666,6 +666,8 @@ class UserTenantDao:
     @classmethod
     async def aremove_user_from_tenant(cls, user_id: int, tenant_id: int) -> None:
         """Physically delete a UserTenant record."""
+        from bisheng.forgemind.domain.service import revoke_project_user
+        await revoke_project_user(user_id, tenant_id)
         async with get_async_db_session() as session:
             result = await session.exec(
                 select(UserTenant).where(
@@ -847,6 +849,8 @@ class UserTenantDao:
         department changes — the old leaf is demoted to history and a new
         active row is created/promoted by ``aactivate_user_tenant``.
         """
+        from bisheng.forgemind.domain.service import revoke_project_user
+        await revoke_project_user(user_id, tenant_id)
         from sqlalchemy import update as sa_update
 
         with bypass_tenant_filter():
@@ -877,6 +881,12 @@ class UserTenantDao:
 
         Returns the activated UserTenant row.
         """
+        from os import getenv
+        from bisheng.forgemind.domain.service import revoke_project_user
+        if getenv("FORGEMIND_PROJECTS_ENABLED") == "1" and str(tenant_id) != getenv("FORGEMIND_TENANT_ID"):
+            previous = await cls.aget_active_user_tenant(user_id)
+            if previous:
+                await revoke_project_user(user_id, previous.tenant_id)
         from sqlalchemy import update as sa_update
 
         with bypass_tenant_filter():

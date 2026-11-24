@@ -62,6 +62,39 @@ class RouteTest(unittest.TestCase):
             with self.assertRaises(ControllerUnavailable):
                 request_controller("list")
 
+    def test_project_routes_native_account_and_ownership(self):
+        base = "/api/v1/forgemind"
+        data = {"name": "Project", "repository": "org/repo", "version": "", "features": ["read"],
+                "members": [{"user": 8, "features": ["read"]}]}
+        self.assertEqual(self.client.get(base + "/projects").status_code, 403)
+        self.enterContext(patch.dict("os.environ", FORGEMIND_PROJECTS_ENABLED="1"))
+        directory = {8: {"user": 8, "name": "Alice", "account": "alice"}}
+        with patch("bisheng.forgemind.api.router.tenant_accounts", return_value=directory):
+            self.assertEqual(self.client.get(base + "/members").json()["data"]["result"], list(directory.values()))
+            self.assertEqual(self.client.put(base + "/projects/example", json=data).status_code, 200)
+            self.assertEqual(self.transport.call_args.args, ("project-save",))
+            self.assertEqual(self.client.post(base + "/projects/example/invites/8").status_code, 200)
+            self.transport.reset_mock()
+            data["members"][0]["user"] = 9
+            self.assertEqual(self.client.put(base + "/projects/example", json=data).status_code, 403)
+            self.assertEqual(self.client.post(base + "/projects/example/invites/9").status_code, 403)
+            self.tenant = 2
+            self.assertEqual(self.client.get(base + "/projects").status_code, 403)
+            self.transport.assert_not_called()
+
+    def test_disable_hook_filters_tenant_and_surfaces_failure(self):
+        import asyncio
+        from bisheng.forgemind.domain.service import revoke_project_user
+        self.enterContext(patch.dict("os.environ", FORGEMIND_PROJECTS_ENABLED="1"))
+        with patch("bisheng.forgemind.domain.service.request_controller", return_value={"result": {"revoked": True}}) as controller:
+            asyncio.run(revoke_project_user(8, 5))
+            controller.assert_not_called()
+            asyncio.run(revoke_project_user(8, 4))
+            controller.assert_called_once_with("project-revoke-user", user=8)
+            controller.return_value = {"error": "unavailable"}
+            with self.assertRaises(ControllerUnavailable):
+                asyncio.run(revoke_project_user(8))
+
 
 if __name__ == "__main__":
     unittest.main()

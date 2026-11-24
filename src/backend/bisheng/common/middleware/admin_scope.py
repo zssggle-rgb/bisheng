@@ -28,6 +28,7 @@ from bisheng.utils.http_middleware import (
 )
 
 MANAGEMENT_API_PREFIXES: tuple[str, ...] = (
+    "/api/v1/forgemind",
     "/api/v1/skill/template",
     "/api/v1/llm",
     "/api/v1/workstation",
@@ -63,6 +64,7 @@ MANAGEMENT_API_PREFIXES: tuple[str, ...] = (
 
 # Explicit mutating management routes only: shared reads and calls need no new header.
 _EXPECTED_SCOPE_WRITES = (
+    (frozenset({"PUT", "POST"}), r"/api/v1/forgemind/(?:projects|hosts)(?:/.*)?"),
     (frozenset({"PATCH"}), r"/api/v1/guest-link/(?:workflow|assistant)/[^/]+"),
     (frozenset({"POST"}), r"/api/v1/knowledge/space/[^/]+/uploads(?:/[^/]+/previews)?"),
     (

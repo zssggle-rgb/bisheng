@@ -360,6 +360,20 @@ print(json.dumps(result))
 
     def dispatch(self, req):
         action = req["action"]
+        if action in ("project-directory", "project-save", "project-invite", "project-revoke-user"):
+            from project_console.administration import Administration
+            from project_console.store import Problem as ProjectProblem
+            admin = Administration(self.cfg, lambda: [row["name"] for row in self.workers()])
+            try:
+                if action == "project-directory":
+                    return admin.directory()
+                if action == "project-save":
+                    return admin.save(req["project"], req["change"])
+                if action == "project-revoke-user":
+                    return admin.revoke_user(req["user"])
+                return admin.invite(req["project"], req["user"])
+            except ProjectProblem as exc:
+                raise Problem(str(exc)) from None
         if action == "list":
             return self.listing()
         if action == "options":
@@ -385,7 +399,10 @@ def main():
         if len(sys.argv) == 3 and sys.argv[1] == "--job":
             manager.build(sys.argv[2])
             return
-        result = manager.dispatch(json.loads(sys.stdin.buffer.read(16385)))
+        body = sys.stdin.buffer.read(262145)
+        if len(body) > 262144:
+            raise Problem("request_too_large")
+        result = manager.dispatch(json.loads(body))
         response = {"result": result}
     except Problem as exc:
         response = {"error": str(exc)}

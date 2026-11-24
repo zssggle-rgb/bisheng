@@ -18,9 +18,9 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import UserRoleItem from "./UserRoleItem";
 
-interface CreateUserProps { open: boolean; onClose: (open: boolean) => void; onSave: () => void; }
+interface CreateUserProps { open: boolean; onClose: (open: boolean) => void; onSave: () => void; onCreated?: (account: string) => void; }
 
-export function CreateUser({ open, onClose, onSave }: CreateUserProps) {
+export function CreateUser({ open, onClose, onSave, onCreated }: CreateUserProps) {
     const { t } = useTranslation()
 
     const initItems = { key: generateUUID(8), groupId: '', roles: [] as string[] }
@@ -72,6 +72,7 @@ export function CreateUser({ open, onClose, onSave }: CreateUserProps) {
             setAccountConflict(false)
             setExpandedRule(null)
             onSave()
+            onCreated?.(form.external_id)
         })
         } catch (error) {
             if (isApiError(error) && error.status_code === 10613) setAccountConflict(true)

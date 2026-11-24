@@ -16,6 +16,7 @@ import SharePage from "@/pages/Dashboard/share";
 const DshLogin = lazy(() => import('@/pages/DshLogin').then(module => ({ default: module.DshLogin })));
 const Templates = lazy(() => import("@/pages/BuildPage/appTemps"));
 const HostsPage = lazy(() => import("@/pages/ForgeMind/HostsPage").then(m => ({ default: m.HostsPage })));
+const TeamPage = lazy(() => import("@/pages/ForgeMind/TeamPage").then(m => ({ default: m.TeamPage })));
 const Apps = lazy(() => import("@/pages/BuildPage/apps"));
 const HostedAppDetail = lazy(() => import("@/pages/BuildPage/hostedApp"));
 const AppRuntimeGuide = lazy(() => import("@/pages/AppRuntimeGuide"));
@@ -121,6 +122,8 @@ const privateRouter = [
       { path: "label/chat/:id/:fid/:cid/:type", element: <TaskAppChats />, permission: 'mark_task' },
       { path: "dashboard", element: <Dashboard />, permission: 'board' },
       { path: "forgemind/hosts", element: <HostsPage /> },
+      { path: "forgemind/members", element: <TeamPage mode="members" /> },
+      { path: "forgemind/projects", element: <TeamPage mode="projects" /> },
       { path: "tenant", element: <TenantPage />, permission: 'sys' },
       { path: "department", element: <Navigate to="/sys" replace /> },
       { path: "menu-pending", element: <MenuPermissionPlaceholder /> },

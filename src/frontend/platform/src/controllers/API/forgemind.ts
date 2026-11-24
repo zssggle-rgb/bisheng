@@ -19,12 +19,13 @@ async function unpack<T>(response: Promise<Reply<T>>): Promise<T> {
   if ("error" in body) throw new Error(body.error);
   return body.result;
 }
-export function useHostAccess() {
+export function useHostAccess(projects = false) {
   const { user } = useContext(userContext);
   const scope = [user?.user_id, user?.tenant_id, user?.leaf_tenant_id].join("/");
-  const access = useQuery(["host-access", scope], async (): Promise<boolean> =>
-    (await request.get<never, { enabled: boolean }>(url + "/access", { showError: false })).enabled,
-    { enabled: Boolean(user?.user_id), retry: false, staleTime: 15000 });
+  const access = useQuery(["host-access", scope], () =>
+    request.get<never, { enabled: boolean; projects?: boolean }>(url + "/access", { showError: false }),
+    { select: result => projects ? Boolean(result.projects) : result.enabled,
+      enabled: Boolean(user?.user_id), retry: false, staleTime: 15000 });
   return { access, scope };
 }
 export const hostApi = {
@@ -39,4 +40,30 @@ export const hostApi = {
     unpack<Instance>(request.put(instanceUrl(name) + "/title", { uuid, title })),
   check: (name: string, uuid: string, action: "check" | "connect") =>
     unpack<{ ok: boolean }>(request.post(instanceUrl(name) + "/" + action, { uuid })),
+};
+
+export type Feature = "delegate" | "read";
+export type Member = { user: number; name: string; account: string };
+export type Assignment = {
+  user: number; features: Feature[]; dev: string; test: string; legacy?: string;
+  bound?: boolean; feishuName?: string; paired?: boolean;
+  effective?: Partial<Record<Feature, boolean>>; error?: string;
+  recipient?: string; confirm?: string; pendingName?: string; pendingKey?: string;
+};
+export type ManagedProject = {
+  id: string; name: string; repository: string; assistant: string; assistantName: string; knowledgeRole?: string;
+  version: string; features: Feature[]; members: Assignment[]; legacy: { key: string; name: string }[];
+};
+export type ProjectAssistant = { id: string; name: string; sources: Record<string, string> };
+type TeamDirectory = { projects: ManagedProject[]; assistants: ProjectAssistant[] };
+const projectsUrl = "/api/v1/forgemind/projects";
+export const teamApi = {
+  directory: () => unpack<TeamDirectory>(request.get(projectsUrl)),
+  users: () => unpack<Member[]>(request.get("/api/v1/forgemind/members")),
+  save: (p: ManagedProject) => unpack<{ id: string }>(request.put(projectsUrl + "/" + encodeURIComponent(p.id),
+    { name: p.name, repository: p.repository, assistant: p.assistant, knowledgeRole: p.knowledgeRole, version: p.version, features: p.features,
+      members: p.members.map(({ user, features, dev, test, legacy, recipient, confirm }) =>
+        ({ user, features, dev, test, legacy, recipient, confirm })) })),
+  invite: (project: string, user: number) => unpack<{ qr: string; until: number }>(
+    request.post(projectsUrl + "/" + encodeURIComponent(project) + "/invites/" + user)),
 };

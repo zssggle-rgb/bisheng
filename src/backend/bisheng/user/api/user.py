@@ -735,6 +735,9 @@ async def update(*, request: Request, user: UserUpdate, login_user: LoginUser = 
                 detail="Account disabled by organization sync; only a super admin can re-enable.",
             )
         if user.delete == db_user.delete:
+            if user.delete == 1:
+                from bisheng.forgemind.domain.service import revoke_project_user
+                await revoke_project_user(db_user.user_id)
             return resp_200()
         disabled_just_now = user.delete == 1
         db_user.delete = user.delete
