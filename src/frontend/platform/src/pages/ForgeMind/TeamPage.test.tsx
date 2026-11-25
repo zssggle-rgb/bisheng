@@ -16,8 +16,8 @@ let projects: ManagedProject[];
 beforeEach(() => {
   vi.clearAllMocks();
   projects = [project("Alpha"), project("Beta")];
-  vi.mocked(teamApi.users).mockResolvedValue([{ user: 3, name: "郑会明", account: "zhm" },
-    { user: 4, name: "熊道旺", account: "xdw" }]);
+  vi.mocked(teamApi.users).mockResolvedValue([{ user: 3, name: "First Member", account: "user-one" },
+    { user: 4, name: "Second Member", account: "user-two" }]);
   vi.mocked(teamApi.directory).mockImplementation(async () => ({ projects, assistants: [] }));
   vi.mocked(hostApi.list).mockResolvedValue(["dev-1", "test-1"].map(name => ({ name, created: "", seen: null, online: null })));
   vi.mocked(hostApi.summaries).mockResolvedValue({});
@@ -36,9 +36,9 @@ it("searches existing accounts, then saves a project assignment for the selected
   openPage();
   fireEvent.click(await screen.findByRole("button", { name: "fmTeam.newMember" }));
   const input = screen.getByRole("combobox", { name: "fmTeam.existingUser" });
-  await userEvent.type(input, "ZHm");
-  expect(screen.queryByRole("option", { name: /xdw/ })).toBeNull();
-  fireEvent.click(await screen.findByRole("option", { name: /郑会明.*zhm/ }));
+  await userEvent.type(input, "USER-one");
+  expect(screen.queryByRole("option", { name: /user-two/ })).toBeNull();
+  fireEvent.click(await screen.findByRole("option", { name: /First Member.*user-one/ }));
   fireEvent.click(screen.getByRole("combobox", { name: "fmTeam.assignProject" }));
   fireEvent.click(await screen.findByRole("option", { name: "Alpha" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "fmTeam.delegate" }));
@@ -60,7 +60,7 @@ it("shows every assignment immediately, preserving the other project and other m
     { user: 4, dev: "", test: "", features: ["read"] }];
   projects[1].members = [{ user: 3, dev: "", test: "", features: ["read"], effective: { read: true } }];
   openPage();
-  fireEvent.click(await screen.findByRole("button", { name: /郑会明/ }));
+  fireEvent.click(await screen.findByRole("button", { name: /First Member/ }));
   const alpha = within(screen.getByRole("region", { name: "Alpha" }));
   const beta = within(screen.getByRole("region", { name: "Beta" }));
   expect(alpha.getByText("alpha-qa")).toBeVisible();
@@ -86,9 +86,9 @@ it("generates a downloadable invitation only when the owner chooses an unbound m
   expect(teamApi.invite).not.toHaveBeenCalled();
   expect(screen.getByRole("button", { name: "fmTeam.makeQr" })).toBeDisabled();
   await userEvent.click(screen.getByRole("combobox", { name: "fmTeam.invitee" }));
-  expect(screen.queryByRole("option", { name: /xdw/ })).toBeNull();
-  await userEvent.click(await screen.findByRole("option", { name: /zhm/ }));
+  expect(screen.queryByRole("option", { name: /user-two/ })).toBeNull();
+  await userEvent.click(await screen.findByRole("option", { name: /user-one/ }));
   fireEvent.click(screen.getByRole("button", { name: "fmTeam.makeQr" }));
-  expect(await screen.findByRole("link", { name: "fmTeam.downloadInvite" })).toHaveAttribute("download", "Alpha-郑会明 · zhm.png");
+  expect(await screen.findByRole("link", { name: "fmTeam.downloadInvite" })).toHaveAttribute("download", "Alpha-First Member · user-one.png");
   expect(teamApi.invite).toHaveBeenCalledWith("Alpha", 3);
 });
