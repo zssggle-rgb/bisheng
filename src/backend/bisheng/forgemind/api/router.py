@@ -32,7 +32,7 @@ protected = APIRouter(dependencies=[Depends(require_owner)])
 class CreateHost(BaseModel):
     name: str = Field(pattern=r"^[a-z][a-z0-9-]{1,60}[a-z0-9]$")
     image: str = Field(min_length=1, max_length=150)
-    user_ip: IPv4Address
+    user_ip: IPv4Address | None = None
     cpus: int = Field(ge=1, le=128)
     memory: int = Field(ge=1, le=512)
     disk: int = Field(ge=1, le=4096)

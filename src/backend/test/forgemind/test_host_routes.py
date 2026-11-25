@@ -29,6 +29,10 @@ class RouteTest(unittest.TestCase):
         self.transport = self.enterContext(patch("bisheng.forgemind.api.router.request_controller", return_value={"result":[]}))
 
     def test_owner_list_detail_and_create(self):
+        for optional in ({}, {"user_ip": None}):
+            data = {k: v for k, v in self.payload.items() if k != "user_ip"}
+            self.assertEqual(self.client.post(self.root, json={**data, **optional}).status_code, 200)
+            self.assertIsNone(self.transport.call_args.kwargs["user_ip"])
         self.assertTrue(self.client.get(self.root+"/access").json()["data"]["enabled"])
         for method, path, body, action in [
             ("GET", "", None, "list"), ("GET","/summaries",None,"summaries"), ("GET","/options",None,"options"),

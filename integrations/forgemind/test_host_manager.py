@@ -105,12 +105,22 @@ class HostManagerTest(unittest.TestCase):
             spawn.assert_called_once()
             with self.assertRaisesRegex(Problem, "conflict"):
                 self.m.start(dict(req, user_ip="198.51.100.8"))
+            internal = {k: v for k, v in req.items() if k != "user_ip"}
+            internal.update(request_id=str(uuid4()), name="internal-host")
+            self.assertEqual(self.m.start(internal)["phase"], "starting")
+            self.assertEqual(self.m.start(dict(internal, user_ip=None))["phase"], "starting")
+            self.assertEqual(spawn.call_count, 2)
             with self.assertRaisesRegex(Problem, "missing_request"):
                 self.m.progress(str(uuid4()))
 
     def test_partial_create_resumes_same_instance_and_pins_host(self):
-        name, rid = "build-new", str(uuid4())
-        job = dict(name=name, request_id=rid, image="worker.qcow2", user_ip="198.51.100.7", cpus=2, memory=8, disk=48, phase="starting")
+        for user_ip in (None, "198.51.100.7"):
+            with self.subTest(user_ip=user_ip):
+                self.check_partial_create(user_ip)
+
+    def check_partial_create(self, user_ip):
+        name, rid = ("build-public" if user_ip else "build-internal"), str(uuid4())
+        job = dict(name=name, request_id=rid, image="worker.qcow2", user_ip=user_ip, cpus=2, memory=8, disk=48, phase="starting")
         self.m.job_path(rid).write_text(json.dumps(job))
         self.m.cfg.update(create_script="/opt/create", pool="images", hypervisor_public_key="/public",
                           management_identity="/key", uplink="lan0")
@@ -125,7 +135,8 @@ class HostManagerTest(unittest.TestCase):
             self.assertEqual(self.m.binding(name)["uuid"], self.uid)
             self.m.build(rid)
             self.assertEqual(self.m.progress(rid)["phase"], "done")
-            self.assertEqual(sum("--user-ip" in c.args for c in commands.call_args_list), 1)
+            create, = [c.args for c in commands.call_args_list if "FM_CPUS=2" in c.args]
+            self.assertEqual(create[create.index("/public") + 1:], ("--user-ip", user_ip, "--user-uplink", "lan0") if user_ip else ())
             self.assertIn("StrictHostKeyChecking yes", (self.base/rid/"ssh_config").read_text())
 
     def test_network_reservation_updates_only_missing_view(self):

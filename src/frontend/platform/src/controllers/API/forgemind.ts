@@ -11,7 +11,7 @@ export type Instance = {
   user_ip: string | null; platform_ip: string | null; image: string | null; mutable: boolean; connection: boolean;
 };
 export type HostOptions = { images: { id: string; label: string; minimum: number }[]; networks: string[] };
-export type HostInput = { name: string; image: string; user_ip: string; cpus: number; memory: number; disk: number; request_id: string };
+export type HostInput = { name: string; image: string; user_ip: string | null; cpus: number; memory: number; disk: number; request_id: string };
 export type Job = { request_id: string; name: string; phase: string; error: string | null };
 type Reply<T> = { result: T } | { error: string };
 async function unpack<T>(response: Promise<Reply<T>>): Promise<T> {

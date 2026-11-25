@@ -33,6 +33,8 @@ Install `host_manager.py` on the Autoloop controller as that executable. Run it 
 
 Set the real paths and network interface at the site. The controller's own OpenSSH alias `hypervisor` uses a pinned host key and the existing libvirt operator account. The hypervisor needs the dual-NIC ForgeMind `create-guest.sh` with its adjacent `user_network.py`, the allowed template pool, and the controller's **public** management key. The controller needs the matching private management identity and ForgeMind's `connect.py`. Optionally specify the site's approved `model_settings` path on the controller. Provision `state` as a directory writable only by the controller account. It stores private creation receipts and per-instance SSH profiles. Hub registration and libvirt stay authoritative for live state.
 
+When restricting SSH on the hypervisor, permit the create recipe with its three positional arguments, and the same invocation with the site's validated `--user-ip` and `--user-uplink` pair. Both use platform DHCP for enrollment. Only the second invocation attaches the user network.
+
 ## Deploying on BiSheng v3.0.2
 
 Build the administrator frontend against the site's **v3.0.2** source and lockfile. Its management-session API differs from the v3.1 frontend. Apply the host menu and route changes to the release layout and routes, copy the ForgeMind page and API client, and merge only the `hosts` translation object into each release locale. Keep the release's original dashboards and user workspace.

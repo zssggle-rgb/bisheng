@@ -178,7 +178,7 @@ print(json.dumps(result))
                 raise
             images.append({"id": item["file"], "label": item["label"],
                            "minimum": (int(xml.findtext("capacity")) + 1024**3 - 1) // 1024**3})
-        links = json.loads(self.remote("ip", "-j", "-4", "addr", "show", "dev", self.cfg["uplink"]))
+        links = json.loads(self.remote("ip", "-j", "-4", "addr", "show", "dev", self.cfg["uplink"])) if self.cfg.get("uplink") else []
         networks = [str(ipaddress.ip_interface(f"{a['local']}/{a['prefixlen']}").network)
                     for link in links for a in link["addr_info"] if a.get("scope") == "global"]
         return dict(images=images, networks=networks)
@@ -247,6 +247,7 @@ print(json.dumps(result))
         return data
 
     def start(self, req, resume=False):
+        req = {**req, "user_ip": req.get("user_ip")}
         path = self.job_path(req["request_id"])
         with (self.state / "requests.lock").open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
@@ -269,9 +270,13 @@ print(json.dumps(result))
                 if not image or not all(isinstance(req[k], int) and lo <= req[k] <= hi
                                         for k, lo, hi in (("cpus", 1, 128), ("memory", 1, 512), ("disk", image["minimum"], 4096))):
                     raise Problem("invalid")
-                ip = ipaddress.IPv4Address(req["user_ip"])
-                if not any(ip in ipaddress.ip_network(n) for n in opts["networks"]):
-                    raise Problem("invalid_address")
+                if req["user_ip"] is not None:
+                    try:
+                        ip = ipaddress.IPv4Address(req["user_ip"])
+                    except ipaddress.AddressValueError:
+                        raise Problem("invalid_address") from None
+                    if not any(ip in ipaddress.ip_network(n) for n in opts["networks"]):
+                        raise Problem("invalid_address")
                 job = {key: req[key] for key in ("name", "image", "user_ip", "cpus", "memory", "disk", "request_id")}
             job.update(phase="starting", error=None)
             save(path, job)
@@ -299,10 +304,10 @@ print(json.dumps(result))
                     job["phase"] = "creating"
                     save(path, job)
                     template = self.virsh("vol-path", "--pool", self.cfg["pool"], job["image"])
+                    network_args = ["--user-ip", job["user_ip"], "--user-uplink", self.cfg["uplink"]] if job.get("user_ip") else []
                     self.remote("env", f"FM_CPUS={job['cpus']}", f"FM_RAM_MIB={job['memory'] * 1024}",
                                 f"FM_DISK_GIB={job['disk']}", self.cfg["create_script"], name, template,
-                                self.cfg["hypervisor_public_key"], "--user-ip", job["user_ip"],
-                                "--user-uplink", self.cfg["uplink"], timeout=900)
+                                self.cfg["hypervisor_public_key"], *network_args, timeout=900)
                     job["uuid"] = self.virsh("domuuid", name)
                     save(path, job)
                 if self.virsh("domuuid", name) != job["uuid"]:
