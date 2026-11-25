@@ -60,7 +60,8 @@ def request_controller(action: str, **fields) -> dict:
             ["ssh", "-T", "-oBatchMode=yes", "-oStrictHostKeyChecking=yes",
              "-oConnectTimeout=5", target, "forgemind-host-manager"],
             input=json.dumps(dict(action=action, **fields)), capture_output=True,
-            text=True, check=True, timeout=300 if action == "project-save" else 120 if action == "connect" else 45,
+            text=True, check=True, timeout=300 if action == "project-save" or (
+                action == "project-assistant" and fields.get("operation") == "connect") else 120 if action == "connect" else 45,
         )
         response = json.loads(result.stdout)
         if not isinstance(response, dict) or "result" not in response and "error" not in response:
