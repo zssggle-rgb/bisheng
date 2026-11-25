@@ -1,5 +1,13 @@
 {
   "fmTeam": {
+    "joinCommand": "Scan with Feishu and send 加入项目 to the bot. The project owner confirms the first binding here.",
+    "botQr": "Project bot QR code",
+    "downloadBotQr": "Download project QR code",
+    "pendingScans": "Feishu identities awaiting approval",
+    "feishuUser": "Feishu user",
+    "matchAccount": "Choose the BiSheng member, then save to confirm",
+    "awaitingScan": "Awaiting QR scan",
+    "assistantAfterSave": "Save the project to create its Feishu bot or connect an existing one.",
     "unregisteredQA": "Existing QA target, unregistered in Hub",
     "downloadInvite": "Download invitation QR code for {{name}}",
     "existingUser": "Select a BiSheng user",
@@ -62,7 +70,7 @@
     "check_receive": "Receive private messages",
     "check_reply": "Reply as the bot",
     "check_route": "Project routing",
-    "check_callback": "Member QR authorization",
+    "check_callback": "Member enrollment",
     "missingChatRoute": "Members can scan to link their accounts. The assistant’s message route is pending.",
     "check_members": "Managed project membership",
     "notVerified": "Unverified",

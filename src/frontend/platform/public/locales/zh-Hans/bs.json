@@ -1,5 +1,13 @@
 {
   "fmTeam": {
+    "joinCommand": "请用飞书扫码，在机器人私聊中发送「加入项目」。项目负责人在这里确认首次绑定。",
+    "botQr": "项目机器人二维码",
+    "downloadBotQr": "下载项目二维码",
+    "pendingScans": "待确认的飞书身份",
+    "feishuUser": "飞书用户",
+    "matchAccount": "选择对应的毕昇成员，保存后绑定",
+    "awaitingScan": "待扫码绑定",
+    "assistantAfterSave": "保存项目后，创建项目机器人或接入已有机器人。",
     "unregisteredQA": "既有 QA 目标，尚未注册到 Hub",
     "downloadInvite": "下载 {{name}} 的邀请二维码",
     "existingUser": "选择毕昇用户",
@@ -62,7 +70,7 @@
     "check_receive": "接收私聊权限",
     "check_reply": "机器人回复权限",
     "check_route": "项目收件和回复路由",
-    "check_callback": "成员扫码授权",
+    "check_callback": "成员接入服务",
     "missingChatRoute": "成员可以扫码绑定。项目助手的消息路由尚未就绪。",
     "check_members": "控制机成员接入配置",
     "notVerified": "待核验",

@@ -107,19 +107,23 @@ it("shows every assignment immediately, preserving the other project and other m
   expect(beta.getByText("fmTeam.active")).toBeVisible();
 });
 
-it("generates a downloadable invitation only when the owner chooses an unbound member in the project", async () => {
+it("shows one project bot QR and lets the owner match a join request to a saved unbound account", async () => {
   projects[0].assistant = "assistant";
+  projects[0].botQr = "data:image/png;base64,AA==";
+  projects[0].applicants = [{ key: "abcd", name: "Feishu account", suffix: "123456" }];
   projects[0].members = [{ user: 3, dev: "", test: "", features: ["read"] },
     { user: 4, dev: "", test: "", features: [], bound: true }];
-  vi.mocked(teamApi.invite).mockResolvedValue({ qr: "data:image/png;base64,AA==", until: 1900000000 });
   openPage("projects");
   fireEvent.click(await screen.findByRole("button", { name: /Alpha/ }));
   expect(teamApi.invite).not.toHaveBeenCalled();
-  expect(screen.getByRole("button", { name: "fmTeam.makeQr" })).toBeDisabled();
-  await userEvent.click(screen.getByRole("combobox", { name: "fmTeam.invitee" }));
+  expect(screen.getByRole("img", { name: "fmTeam.botQr" })).toHaveAttribute("src", projects[0].botQr);
+  expect(screen.getByRole("link", { name: "fmTeam.downloadBotQr" })).toHaveAttribute("download", "Alpha.png");
+  expect(screen.queryByText("fmTeam.recipient")).toBeNull();
+  await userEvent.click(screen.getByRole("combobox", { name: /Feishu account.*123456/ }));
   expect(screen.queryByRole("option", { name: /user-two/ })).toBeNull();
   await userEvent.click(await screen.findByRole("option", { name: /user-one/ }));
-  fireEvent.click(screen.getByRole("button", { name: "fmTeam.makeQr" }));
-  expect(await screen.findByRole("link", { name: "fmTeam.downloadInvite" })).toHaveAttribute("download", "Alpha-First Member · user-one.png");
-  expect(teamApi.invite).toHaveBeenCalledWith("Alpha", 3);
+  fireEvent.click(screen.getByRole("button", { name: "fmTeam.save" }));
+  await waitFor(() => expect(teamApi.save).toHaveBeenCalledWith(expect.objectContaining({
+    members: [expect.objectContaining({ user: 3, confirm: "abcd" }), projects[0].members[1]]
+  })));
 });

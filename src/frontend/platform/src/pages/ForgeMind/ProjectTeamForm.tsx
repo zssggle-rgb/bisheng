@@ -40,8 +40,6 @@ function AssignmentFields({ row, project, hosts, update }: {
   const options = (opposite: string) => hosts.filter(h => h.name !== opposite && !occupied.has(h.name))
     .map(h => ({ value: h.name, label: h.title ? h.title + " · " + h.name : h.name }));
   return <div className="grid gap-3">
-    {!row.bound && <label className="grid gap-1.5">{t("fmTeam.recipient")}<Input value={row.recipient || ""}
-      placeholder={t("fmTeam.recipientHint")} onChange={e => update({ recipient: e.target.value })} /></label>}
     {row.pendingKey && !row.bound && <label className="flex items-center gap-2">
       <input type="checkbox" checked={row.confirm === row.pendingKey}
         onChange={e => update({ confirm: e.target.checked ? row.pendingKey : "" })} />
@@ -58,9 +56,9 @@ function AssignmentFields({ row, project, hosts, update }: {
         if (entry) update({ legacy, confirm: "", features: entry.features.filter(f => project.features.includes(f)),
           dev: entry.dev || row.dev, test: entry.dev === row.test ? "" : row.test });
       }} />}
-    <small className="text-text-2">{row.feishuName || t(row.bound ? "fmTeam.bound" : "fmTeam.unbound")}
+    {project.assistant && <small className="text-text-2">{row.feishuName || t(row.bound ? "fmTeam.bound" : "fmTeam.awaitingScan")}
       {row.bound && row.feishuName && " · " + t("fmTeam.bound")}
-      {row.features.map(f => " · " + t("fmTeam." + f) + " " + t(row.effective?.[f] ? "fmTeam.active" : "fmTeam.pending")).join("")}</small>
+      {row.features.map(f => " · " + t("fmTeam." + f) + " " + t(row.effective?.[f] ? "fmTeam.active" : "fmTeam.pending")).join("")}</small>}
     {row.error && <small role="status">{t("fmTeam." + row.error, { defaultValue: t("fmTeam.pending") })}</small>}
   </div>;
 }
@@ -71,9 +69,7 @@ export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved
   const { t } = useTranslation();
   const [project, setProject] = useState<ManagedProject>(() => user && !initial.members.some(r => r.user === user)
     ? { ...initial, members: [...initial.members, newAssignment(user)] } : initial);
-  const [invitee, setInvitee] = useState("");
   const saving = useMutation(() => teamApi.save(project), { onSuccess: result => saved(result.id) });
-  const invitation = useMutation((id: string) => teamApi.invite(initial.id, Number(id)));
   const dirty = JSON.stringify(initial) !== JSON.stringify(project);
   const memberName = (id: number) => {
     const account = users.find(person => person.user === id);
@@ -90,8 +86,8 @@ export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved
       <label className="grid gap-1.5">{t("fmTeam.repo")}<Input value={project.repository}
         placeholder="https://github.com/owner/repository" onChange={e => setProject({ ...project, repository: e.target.value })} /></label>
       {initial.assistant ? <div>{t("fmTeam.assistant")} · {project.assistantName}</div> :
-        initial.version && <ProjectAssistantSetup project={initial.id} disabled={dirty || saving.isLoading}
-          connected={() => saved(initial.id)} />}
+        initial.version ? <ProjectAssistantSetup project={initial.id} disabled={dirty || saving.isLoading}
+          connected={() => saved(initial.id)} /> : <p>{t("fmTeam.assistantAfterSave")}</p>}
       {initial.chatRoute === false && <small>{t("fmTeam.missingChatRoute")}</small>}
       <fieldset className="grid gap-2"><legend>{t("fmTeam.projectFeatures")}</legend>
         <Features value={project.features} allowed={features} change={enabled => setProject({ ...project, features: enabled,
@@ -101,7 +97,7 @@ export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved
         <Picker label={t("fmTeam.source")} value={project.knowledgeRole || ""} choices={Object.entries(sources)
           .map(([value, label]) => ({ value, label }))} change={knowledgeRole => setProject({ ...project, knowledgeRole })} /> :
         <small>{t("fmTeam.defaultSource")}</small>)}
-      <Picker label={t("fmTeam.addMember")} value="" choices={users.filter(u => !project.members.some(row => row.user === u.user))
+      <Picker label={t("fmTeam.addMember")} searchable value="" choices={users.filter(u => !project.members.some(row => row.user === u.user))
         .map(u => ({ value: String(u.user), label: memberName(u.user) }))}
         change={id => setProject({ ...project, members: [...project.members, newAssignment(Number(id))] })} />
     </>}
@@ -113,18 +109,25 @@ export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved
       <AssignmentFields row={row} project={project} hosts={hosts} update={changes => changeRow(row.user, changes)} />
     </section>)}
     {initial.assistant && !user && <section className="grid gap-2 border-t border-border pt-4">
-      <strong>{project.assistantName} · {t("fmTeam.invite")}</strong>
-      <Picker label={t("fmTeam.invitee")} value={invitee} choices={initial.members.filter(r => !r.bound)
-        .map(r => ({ value: String(r.user), label: memberName(r.user) }))}
-        change={id => { setInvitee(id); invitation.reset(); }} />
-      <Button variant="outlined" disabled={dirty || !invitee || invitation.isLoading} onClick={() => invitation.mutate(invitee)}>
-        {t("fmTeam.makeQr")}</Button>
-      {!dirty && invitation.data && invitation.variables === invitee && <div className="grid justify-items-start gap-2">
-        <img width={200} height={200} alt={t("fmTeam.invite")} src={invitation.data.qr} />
-        <a className="text-primary underline" href={invitation.data.qr} download={project.name + "-" + memberName(Number(invitee)) + ".png"}>
-          {t("fmTeam.downloadInvite", { name: memberName(Number(invitee)) })}</a>
-        <small>{t("fmTeam.expires")} {new Date(invitation.data.until * 1000).toLocaleString()}</small></div>}
-      {invitation.isError && <span role="alert">{t("fmTeam.operationFailed")}</span>}
+      <strong>{project.assistantName} · {t("fmTeam.botQr")}</strong>
+      {initial.botQr && <div className="grid justify-items-start gap-2">
+        <img width={200} height={200} alt={t("fmTeam.botQr")} src={initial.botQr} />
+        <p>{t("fmTeam.joinCommand")}</p>
+        <a className="text-primary underline" href={initial.botQr} download={project.name + ".png"}>{t("fmTeam.downloadBotQr")}</a>
+        <Button variant="text" disabled={dirty || saving.isLoading} onClick={() => saved(initial.id)}>{t("hosts.refresh")}</Button>
+      </div>}
+      {!!initial.applicants?.length && <fieldset className="grid gap-3"><legend>{t("fmTeam.pendingScans")}</legend>
+        {initial.applicants.map(a => {
+          const selected = project.members.find(r => r.confirm === a.key);
+          const label = (a.name || t("fmTeam.feishuUser")) + " · …" + a.suffix;
+          return <Picker key={a.key} label={label} searchable value={selected ? String(selected.user) : ""}
+            placeholder={t("fmTeam.matchAccount")}
+            choices={project.members.filter(r => !r.bound && !r.pendingKey && (!r.confirm || r.confirm === a.key) &&
+              initial.members.some(m => m.user === r.user)).map(r => ({ value: String(r.user), label: memberName(r.user) }))}
+            change={id => setProject(p => ({ ...p, members: p.members.map(r => r.user === Number(id)
+              ? { ...r, confirm: a.key } : r.confirm === a.key ? { ...r, confirm: "" } : r) }))} />;
+        })}
+      </fieldset>}
     </section>}
     {saving.isError && <p role="alert">{t("fmTeam." + (saving.error as Error)?.message, { defaultValue: t("fmTeam.operationFailed") })}</p>}
     {user && !rows.length && <p role="status">{t("fmTeam.removeOnSave", { project: project.name })}</p>}

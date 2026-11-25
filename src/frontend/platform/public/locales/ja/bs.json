@@ -1,5 +1,13 @@
 {
   "fmTeam": {
+    "joinCommand": "飛書でスキャンし、ボットに「加入项目」と送信します。初回の連携はここでプロジェクト責任者が確認します。",
+    "botQr": "プロジェクトボットの QR コード",
+    "downloadBotQr": "QR コードをダウンロード",
+    "pendingScans": "確認待ちの飛書ユーザー",
+    "feishuUser": "飛書ユーザー",
+    "matchAccount": "対応する BiSheng メンバーを選択して保存",
+    "awaitingScan": "QR コードによる連携待ち",
+    "assistantAfterSave": "プロジェクトを保存してから、専用の飛書ボットを作成するか、既存のボットを接続します。",
     "unregisteredQA": "既存の QA ホスト（Hub 未登録）",
     "downloadInvite": "{{name}} の招待用QRコードをダウンロード",
     "existingUser": "BiSheng ユーザーを選択",
@@ -62,7 +70,7 @@
     "check_receive": "個別メッセージの受信権限",
     "check_reply": "ボットの返信権限",
     "check_route": "プロジェクトの受信・返信ルート",
-    "check_callback": "メンバーの QR 認証",
+    "check_callback": "メンバー連携サービス",
     "missingChatRoute": "QR コードでアカウントを連携できます。アシスタントのメッセージ経路は準備中です。",
     "check_members": "メンバー接続設定",
     "notVerified": "未確認",

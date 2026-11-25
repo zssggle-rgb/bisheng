@@ -51,6 +51,8 @@ export type Assignment = {
   recipient?: string; confirm?: string; pendingName?: string; pendingKey?: string;
 };
 export type ManagedProject = {
+  applicants?: { key: string; name: string; suffix: string }[];
+  botQr?: string;
   chatRoute?: boolean;
   id: string; name: string; repository: string; assistant: string; assistantName: string; knowledgeRole?: string;
   setup?: { name?: string; phase: "authorizing" | "registered" };
