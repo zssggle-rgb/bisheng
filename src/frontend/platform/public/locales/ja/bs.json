@@ -1,5 +1,6 @@
 {
   "fmTeam": {
+    "unregisteredQA": "既存の QA ホスト（Hub 未登録）",
     "downloadInvite": "{{name}} の招待用QRコードをダウンロード",
     "existingUser": "BiSheng ユーザーを選択",
     "searchUser": "氏名またはアカウント名で検索",

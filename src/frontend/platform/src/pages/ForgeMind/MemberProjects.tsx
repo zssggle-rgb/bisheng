@@ -35,7 +35,8 @@ export function MemberProjects({ member, projects, hosts, reload }: {
           <dd>{t(!row.features.includes(feature) ? "fmTeam.notGranted" : row.effective?.[feature] ? "fmTeam.active" : "fmTeam.pending")}</dd>
         </Fragment>)}
         <dt className="text-text-2">{t("fmTeam.dev")}</dt><dd className="break-all">{machine(row.dev)}</dd>
-        <dt className="text-text-2">{t("fmTeam.test")}</dt><dd className="break-all">{machine(row.test)}</dd>
+        <dt className="text-text-2">{t("fmTeam.test")}</dt><dd className="break-all">{machine(row.test)}
+          {row.paired && row.test && !hostNames.has(row.test) && " · " + t("fmTeam.unregisteredQA")}</dd>
         <dt className="text-text-2">{t("fmTeam.binding")}</dt><dd>{[row.feishuName,
           t(row.bound ? "fmTeam.bound" : "fmTeam.unbound")].filter(Boolean).join(" · ")}</dd>
       </dl>

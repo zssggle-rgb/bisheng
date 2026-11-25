@@ -1,5 +1,6 @@
 {
   "fmTeam": {
+    "unregisteredQA": "Existing QA target, unregistered in Hub",
     "downloadInvite": "Download invitation QR code for {{name}}",
     "existingUser": "Select a BiSheng user",
     "searchUser": "Search by name or account",

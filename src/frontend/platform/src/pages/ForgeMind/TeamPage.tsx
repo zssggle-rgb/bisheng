@@ -47,7 +47,7 @@ function Directory({ scope, mode }: { scope: string; mode: Mode }) {
     return { id: String(u.user), name: u.name, lines: [u.account, [displayNames, t(bound ? "fmTeam.bound" : "fmTeam.unbound")].filter(Boolean).join(" · "),
       joined.map(p => p.name).join("、")], bound };
   }) : projects.map(p => ({ id: p.id, name: p.name, lines: [p.repository, p.assistantName,
-    t("fmTeam.people", { count: p.members.length + p.legacy.length }), p.features.map(f => t("fmTeam." + f)).join(" · ")], bound: false }));
+    t("fmTeam.people", { count: p.members.length }), p.features.map(f => t("fmTeam." + f)).join(" · ")], bound: false }));
   const action = t(isMember ? "fmTeam.newMember" : "fmTeam.newProject");
   return <main className="h-full overflow-auto bg-[#f8f8f8] px-6 py-8 dark:bg-background-main lg:px-10"><div className="mx-auto max-w-screen-2xl">
     <header className="mb-6 flex items-center gap-3"><h1 className="text-xl font-semibold">{t("fmTeam." + mode)}</h1>

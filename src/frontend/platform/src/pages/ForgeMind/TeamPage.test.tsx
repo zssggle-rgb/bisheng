@@ -56,14 +56,14 @@ it("searches existing accounts, then saves a project assignment for the selected
 });
 
 it("shows every assignment immediately, preserving the other project and other members during edits", async () => {
-  projects[0].members = [{ user: 3, dev: "alpha-dev", test: "alpha-qa", features: ["delegate"], effective: { delegate: true } },
+  projects[0].members = [{ user: 3, dev: "alpha-dev", test: "alpha-qa", paired: true, features: ["delegate"], effective: { delegate: true } },
     { user: 4, dev: "", test: "", features: ["read"] }];
   projects[1].members = [{ user: 3, dev: "", test: "", features: ["read"], effective: { read: true } }];
   openPage();
   fireEvent.click(await screen.findByRole("button", { name: /First Member/ }));
   const alpha = within(screen.getByRole("region", { name: "Alpha" }));
   const beta = within(screen.getByRole("region", { name: "Beta" }));
-  expect(alpha.getByText("alpha-qa")).toBeVisible();
+  expect(alpha.getByText(/alpha-qa/)).toHaveTextContent("fmTeam.unregisteredQA");
   expect(beta.getByText("fmTeam.active")).toBeVisible();
   expect(screen.queryByRole("combobox")).toBeNull();
   fireEvent.click(alpha.getByRole("button", { name: "fmTeam.edit" }));

@@ -1,5 +1,6 @@
 {
   "fmTeam": {
+    "unregisteredQA": "既有 QA 目标，尚未注册到 Hub",
     "downloadInvite": "下载 {{name}} 的邀请二维码",
     "existingUser": "选择毕昇用户",
     "searchUser": "搜索姓名或账号名",
