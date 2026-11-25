@@ -1,5 +1,15 @@
 {
   "fmTeam": {
+    "downloadInvite": "Download invitation QR code for {{name}}",
+    "existingUser": "Select a BiSheng user",
+    "searchUser": "Search by name or account",
+    "assignProject": "Assign project",
+    "notGranted": "Not granted",
+    "unassigned": "Unassigned",
+    "noMembership": "No projects assigned",
+    "noProjects": "Create a project in Project management first",
+    "edit": "Edit",
+    "removeOnSave": "Saving will remove this member from {{project}}",
     "identity_pending": "This assistant has not verified the employee identity. Save to retry.",
     "recipient": "Invited Feishu identity",
     "recipientHint": "Work email, mobile or this app’s Open ID",

@@ -1,5 +1,15 @@
 {
   "fmTeam": {
+    "downloadInvite": "{{name}} の招待用QRコードをダウンロード",
+    "existingUser": "BiSheng ユーザーを選択",
+    "searchUser": "氏名またはアカウント名で検索",
+    "assignProject": "プロジェクトを割り当て",
+    "notGranted": "権限なし",
+    "unassigned": "未割り当て",
+    "noMembership": "プロジェクト未割り当て",
+    "noProjects": "先にプロジェクト管理でプロジェクトを作成してください",
+    "edit": "編集",
+    "removeOnSave": "保存すると、このメンバーは「{{project}}」から削除されます",
     "identity_pending": "このアシスタントで社員を確認できません。再保存で再試行できます。",
     "recipient": "招待する飛書アカウント",
     "recipientHint": "会社メール、携帯番号またはこのアプリの Open ID",

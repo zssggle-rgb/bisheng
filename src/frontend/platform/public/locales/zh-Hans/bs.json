@@ -1,5 +1,15 @@
 {
   "fmTeam": {
+    "downloadInvite": "下载 {{name}} 的邀请二维码",
+    "existingUser": "选择毕昇用户",
+    "searchUser": "搜索姓名或账号名",
+    "assignProject": "分配项目",
+    "notGranted": "未授权",
+    "unassigned": "未分配",
+    "noMembership": "尚未分配项目",
+    "noProjects": "请先在项目管理中创建项目",
+    "edit": "编辑",
+    "removeOnSave": "保存后将从「{{project}}」移除这名成员",
     "identity_pending": "该项目助手尚未核验企业成员身份，可重新保存核验",
     "recipient": "受邀飞书账号",
     "recipientHint": "企业邮箱、手机号或本助手的 Open ID",
