@@ -92,6 +92,7 @@ export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved
       {initial.assistant ? <div>{t("fmTeam.assistant")} · {project.assistantName}</div> :
         initial.version && <ProjectAssistantSetup project={initial.id} disabled={dirty || saving.isLoading}
           connected={() => saved(initial.id)} />}
+      {initial.chatRoute === false && <small>{t("fmTeam.missingChatRoute")}</small>}
       <fieldset className="grid gap-2"><legend>{t("fmTeam.projectFeatures")}</legend>
         <Features value={project.features} allowed={features} change={enabled => setProject({ ...project, features: enabled,
           members: project.members.map(row => ({ ...row, features: row.features.filter(f => enabled.includes(f)),

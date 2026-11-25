@@ -11,6 +11,7 @@ export function ProjectAssistantSetup({ project, disabled, connected }: {
   const client = useQueryClient();
   const key = ["fm", "project-assistant", project];
   const status = useQuery(key, () => teamApi.assistant(project), {
+    onSuccess: data => { if (data.phase === "connected" && !disabled) void connected(); },
     refetchInterval: data => data?.phase === "authorizing" ? 3000 : false,
     retry: false, cacheTime: 0, refetchOnWindowFocus: true,
   });

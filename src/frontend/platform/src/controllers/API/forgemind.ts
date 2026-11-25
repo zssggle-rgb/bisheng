@@ -51,6 +51,7 @@ export type Assignment = {
   recipient?: string; confirm?: string; pendingName?: string; pendingKey?: string;
 };
 export type ManagedProject = {
+  chatRoute?: boolean;
   id: string; name: string; repository: string; assistant: string; assistantName: string; knowledgeRole?: string;
   setup?: { name?: string; phase: "authorizing" | "registered" };
   version: string; features: Feature[]; members: Assignment[]; legacy: { key: string; name: string; features: Feature[]; dev: string }[];
