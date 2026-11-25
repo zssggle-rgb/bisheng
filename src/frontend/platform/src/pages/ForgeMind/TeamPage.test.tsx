@@ -7,7 +7,7 @@ import { TeamPage } from "./TeamPage";
 
 vi.mock("@/controllers/API/forgemind", () => ({
   hostApi: { list: vi.fn(), summaries: vi.fn() },
-  teamApi: { users: vi.fn(), directory: vi.fn(), save: vi.fn(), invite: vi.fn() },
+  teamApi: { users: vi.fn(), directory: vi.fn(), save: vi.fn(), invite: vi.fn(), assistant: vi.fn() },
   useHostAccess: () => ({ access: { isSuccess: true, data: true }, scope: "test" }),
 }));
 const project = (id: string): ManagedProject => ({ id, name: id, version: id + "-v1", assistant: "",
@@ -15,6 +15,7 @@ const project = (id: string): ManagedProject => ({ id, name: id, version: id + "
 let projects: ManagedProject[];
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(teamApi.assistant).mockResolvedValue({ phase: "empty" });
   projects = [project("Alpha"), project("Beta")];
   vi.mocked(teamApi.users).mockResolvedValue([{ user: 3, name: "First Member", account: "user-one" },
     { user: 4, name: "Second Member", account: "user-two" }]);
@@ -27,6 +28,36 @@ beforeEach(() => {
   });
 });
 afterEach(cleanup);
+
+it("offers Feishu creation after the first save, then resumes the official confirmation", async () => {
+  vi.mocked(teamApi.save).mockImplementationOnce(async p => {
+    projects = [...projects, { ...p, version: "v1" }];
+    return { id: p.id };
+  });
+  openPage("projects");
+  fireEvent.click(await screen.findByRole("button", { name: "fmTeam.newProject" }));
+  expect(screen.queryByLabelText("fmTeam.assistant")).toBeNull();
+  fireEvent.change(screen.getByLabelText("fmTeam.projectName"), { target: { value: "New project" } });
+  fireEvent.click(screen.getByRole("button", { name: "fmTeam.save" }));
+  const create = await screen.findByRole("button", { name: "fmTeam.createAssistant" });
+  vi.mocked(teamApi.assistant).mockResolvedValue({ phase: "authorizing", url: "https://open.feishu.cn/page/cli?user_code=example" });
+  fireEvent.click(create);
+  expect(await screen.findByRole("link", { name: "fmTeam.authorizeApp" })).toHaveAttribute("href", "https://open.feishu.cn/page/cli?user_code=example");
+  expect(screen.queryByRole("button", { name: "fmTeam.makeQr" })).toBeNull();
+});
+
+it("adopts only the selected existing assistant and distinguishes app identity from invitation readiness", async () => {
+  vi.mocked(teamApi.assistant).mockImplementation(async (_id, op) => op === "existing"
+    ? { phase: "registered", appId: "cli_123", name: "Sample bot" }
+    : { phase: "empty", choices: [{ id: "legacy", appId: "cli_123", name: "Sample bot", mode: "existing" }] });
+  openPage("projects");
+  fireEvent.click(await screen.findByRole("button", { name: /Alpha/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "fmTeam.adoptAssistant" }));
+  fireEvent.click(await screen.findByRole("button", { name: /Sample bot/ }));
+  expect(await screen.findByText("fmTeam.runtimePending")).toBeVisible();
+  expect(teamApi.assistant).toHaveBeenCalledWith("Alpha", "existing", "legacy");
+  expect(screen.queryByRole("button", { name: "fmTeam.makeQr" })).toBeNull();
+});
 
 function openPage(mode: "members" | "projects" = "members") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });

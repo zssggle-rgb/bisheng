@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSelectLabels } from "@/components/bs-comp/formFields/useSelectLabels";
+import { ProjectAssistantSetup } from "./ProjectAssistantSetup";
 import { teamApi, type Assignment, type Feature, type Host, type ManagedProject, type Member, type ProjectAssistant } from "@/controllers/API/forgemind";
 
 const features: Feature[] = ["delegate", "read"];
@@ -89,8 +90,8 @@ export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved
       <label className="grid gap-1.5">{t("fmTeam.repo")}<Input value={project.repository}
         placeholder="https://github.com/owner/repository" onChange={e => setProject({ ...project, repository: e.target.value })} /></label>
       {initial.assistant ? <div>{t("fmTeam.assistant")} · {project.assistantName}</div> :
-        <Picker label={t("fmTeam.assistant")} value={project.assistant} choices={assistants.map(a => ({ value: a.id, label: a.name }))}
-          change={assistant => setProject({ ...project, assistant, knowledgeRole: "" })} />}
+        initial.version && <ProjectAssistantSetup project={initial.id} disabled={dirty || saving.isLoading}
+          connected={() => saved(initial.id)} />}
       <fieldset className="grid gap-2"><legend>{t("fmTeam.projectFeatures")}</legend>
         <Features value={project.features} allowed={features} change={enabled => setProject({ ...project, features: enabled,
           members: project.members.map(row => ({ ...row, features: row.features.filter(f => enabled.includes(f)),

@@ -52,12 +52,23 @@ export type Assignment = {
 };
 export type ManagedProject = {
   id: string; name: string; repository: string; assistant: string; assistantName: string; knowledgeRole?: string;
+  setup?: { name?: string; phase: "authorizing" | "registered" };
   version: string; features: Feature[]; members: Assignment[]; legacy: { key: string; name: string; features: Feature[]; dev: string }[];
 };
 export type ProjectAssistant = { id: string; name: string; sources: Record<string, string> };
+export type AssistantOperation = "status" | "create" | "existing" | "connect";
+export type AssistantStatus = {
+  phase: "empty" | "authorizing" | "expired" | "registered" | "connected";
+  url?: string; name?: string; appId?: string; canConnect?: boolean;
+  checks?: Partial<Record<"published" | "receive" | "reply" | "callback" | "route" | "members", boolean>>;
+  callback?: string;
+  choices?: { id: string; name: string; appId: string; mode: "existing" | "connect" }[];
+};
 type TeamDirectory = { projects: ManagedProject[]; assistants: ProjectAssistant[] };
 const projectsUrl = "/api/v1/forgemind/projects";
 export const teamApi = {
+  assistant: (project: string, operation: AssistantOperation = "status", candidate = "") =>
+    unpack<AssistantStatus>(request.post(projectsUrl + "/" + encodeURIComponent(project) + "/assistant", { operation, candidate })),
   directory: () => unpack<TeamDirectory>(request.get(projectsUrl)),
   users: () => unpack<Member[]>(request.get("/api/v1/forgemind/members")),
   save: (p: ManagedProject) => unpack<{ id: string }>(request.put(projectsUrl + "/" + encodeURIComponent(p.id),

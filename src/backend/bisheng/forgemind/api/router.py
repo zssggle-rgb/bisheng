@@ -165,4 +165,14 @@ async def project_invite(project: str, user_id: int):
     return await run_in_threadpool(call, "project-invite", project=project, user=user_id)
 
 
+class AssistantAction(BaseModel):
+    operation: Literal["create", "existing", "connect", "status"]
+    candidate: str = Field(default="", max_length=100)
+
+
+@teams.post("/projects/{project}/assistant")
+def project_assistant(project: str, change: AssistantAction):
+    return call("project-assistant", project=project, **change.model_dump())
+
+
 router.include_router(teams)

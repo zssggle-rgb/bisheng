@@ -365,13 +365,17 @@ print(json.dumps(result))
 
     def dispatch(self, req):
         action = req["action"]
-        if action in ("project-directory", "project-save", "project-invite", "project-revoke-user"):
+        if action in ("project-directory", "project-save", "project-invite", "project-revoke-user", "project-assistant"):
             from project_console.administration import Administration
             from project_console.store import Problem as ProjectProblem
             admin = Administration(self.cfg, lambda: [row["name"] for row in self.workers()])
             try:
                 if action == "project-directory":
                     return admin.directory()
+                if action == "project-assistant":
+                    from project_console.assistant_setup import AssistantSetup
+                    return AssistantSetup(admin, self.cfg.get("assistant_setup", {})).inspect(
+                        req["project"], req["operation"], req.get("candidate", ""))
                 if action == "project-save":
                     return admin.save(req["project"], req["change"])
                 if action == "project-revoke-user":
