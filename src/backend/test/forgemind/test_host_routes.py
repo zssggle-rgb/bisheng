@@ -66,6 +66,14 @@ class RouteTest(unittest.TestCase):
             with self.assertRaises(ControllerUnavailable):
                 request_controller("list")
 
+    def test_repository_preparation_gets_the_longer_transport_budget(self):
+        with patch("subprocess.run", return_value=SimpleNamespace(stdout='{"result": {}}')) as run:
+            for action, operation, timeout in (("project-save", "", 600), ("project-deployment", "prepare", 600),
+                    ("project-deployment", "status", 45), ("project-assistant", "connect", 300), ("connect", "", 120)):
+                with self.subTest(action=action, operation=operation):
+                    request_controller(action, operation=operation)
+                    self.assertEqual(run.call_args.kwargs["timeout"], timeout)
+
     def test_project_routes_native_account_and_ownership(self):
         base = "/api/v1/forgemind"
         data = {"name": "Project", "repository": "org/repo", "version": "", "features": ["read"],

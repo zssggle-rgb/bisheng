@@ -60,7 +60,7 @@ function AssignmentFields({ row, project, hosts, update }: {
     {project.assistant && <small className="text-text-2">{row.feishuName || t(row.bound ? "fmTeam.bound" : "fmTeam.awaitingScan")}
       {row.bound && row.feishuName && " · " + t("fmTeam.bound")}
       {row.features.map(f => " · " + t("fmTeam." + f) + " " + t(row.effective?.[f] ? "fmTeam.active" : "fmTeam.pending")).join("")}</small>}
-    {row.error && <small role="status">{t("fmTeam." + row.error, { defaultValue: t("fmTeam.pending") })}</small>}
+    {row.error && <small role="status">{t("fmTeam." + row.error, { app: row.githubApp, repository: project.repository, defaultValue: t("fmTeam.pending") })}</small>}
   </div>;
 }
 export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved, cancel, remove }: {

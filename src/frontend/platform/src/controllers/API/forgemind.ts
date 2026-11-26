@@ -47,7 +47,7 @@ export type Member = { user: number; name: string; account: string };
 export type Assignment = {
   user: number; features: Feature[]; dev: string; test: string; legacy?: string;
   bound?: boolean; feishuName?: string; paired?: boolean;
-  effective?: Partial<Record<Feature, boolean>>; error?: string;
+  effective?: Partial<Record<Feature, boolean>>; error?: string; githubApp?: string;
   recipient?: string; confirm?: string; pendingName?: string; pendingKey?: string;
 };
 export type ManagedProject = {

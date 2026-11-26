@@ -55,14 +55,17 @@ def request_controller(action: str, **fields) -> dict:
     target = os.getenv("FORGEMIND_CONTROLLER", "")
     if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9.-]*", target):
         raise ControllerUnavailable
+    timeout = 120 if action == "connect" else 45
+    if action == "project-save" or (action == "project-deployment" and fields.get("operation") == "prepare"):
+        timeout = 600
+    elif action == "project-assistant" and fields.get("operation") == "connect":
+        timeout = 300
     try:
         result = subprocess.run(
             ["ssh", "-T", "-oBatchMode=yes", "-oStrictHostKeyChecking=yes",
              "-oConnectTimeout=5", target, "forgemind-host-manager"],
             input=json.dumps(dict(action=action, **fields)), capture_output=True,
-            text=True, check=True, timeout=300 if action == "project-save" or (
-                action == "project-deployment" and fields.get("operation") == "prepare") or (
-                action == "project-assistant" and fields.get("operation") == "connect") else 120 if action == "connect" else 45,
+            text=True, check=True, timeout=timeout,
         )
         response = json.loads(result.stdout)
         if not isinstance(response, dict) or "result" not in response and "error" not in response:

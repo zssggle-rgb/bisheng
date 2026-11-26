@@ -41,7 +41,7 @@ export function MemberProjects({ member, projects, hosts, reload }: {
         <dt className="text-text-2">{t("fmTeam.binding")}</dt><dd>{[row.feishuName,
           t(row.bound ? "fmTeam.bound" : "fmTeam.unbound")].filter(Boolean).join(" · ")}</dd>
       </dl>
-      {row.error && <p role="status" className="mt-2">{t("fmTeam." + row.error, { defaultValue: t("fmTeam.pending") })}</p>}
+      {row.error && <p role="status" className="mt-2">{t("fmTeam." + row.error, { app: row.githubApp, repository: project.repository, defaultValue: t("fmTeam.pending") })}</p>}
       {!project.deletion && editing?.id === project.id && editor}
     </section>)}
     {!assignments.length && !editing && <p className="text-text-2">{t("fmTeam.noMembership")}</p>}
