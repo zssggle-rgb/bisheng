@@ -51,6 +51,7 @@ export type Assignment = {
   recipient?: string; confirm?: string; pendingName?: string; pendingKey?: string;
 };
 export type ManagedProject = {
+  deletion?: { phase: "deleting" | "failed"; error?: string };
   provisioning?: { brain?: string; rules?: string; skill?: string; service?: string; repositorySync?: string; lastSyncedAt?: string };
   qaPort?: number | null; qaPath?: string;
   guidance?: string;
@@ -62,6 +63,14 @@ export type ManagedProject = {
   version: string; features: Feature[]; members: Assignment[]; legacy: { key: string; name: string; features: Feature[]; dev: string }[];
 };
 export type ProjectAssistant = { id: string; name: string; sources: Record<string, string> };
+export type ProjectDeletion = {
+  id: string; name: string; repository: string; version: string;
+  phase: "ready" | "blocked" | "deleting" | "failed" | "deleted";
+  assistantName: string; assistantState: string; members: Pick<Assignment, "user" | "dev" | "test">[];
+  brain: "managed" | "existing" | "absent" | "unknown"; blockers: string[];
+  steps: { key: string; state: string }[]; error?: string; resource?: string;
+  workerReceipts?: Record<string, { workspace?: string; credential?: "issuance_revoked" | "not_managed" }>;
+};
 export type AssistantOperation = "status" | "create" | "existing" | "connect";
 export type AssistantStatus = {
   phase: "empty" | "authorizing" | "expired" | "registered" | "connected";
@@ -75,6 +84,9 @@ export type Deployment = { phase?: "queued" | "running" | "failed" | "passed"; e
   receipt?: { candidate: string; observed: string | null; target: string; url: string; healthy: boolean; matches: boolean } };
 const projectsUrl = "/api/v1/forgemind/projects";
 export const teamApi = {
+  deletion: (id: string) => unpack<ProjectDeletion>(request.get(projectsUrl + "/" + encodeURIComponent(id) + "/deletion")),
+  deleteProject: (id: string, version: string) =>
+    unpack<ProjectDeletion>(request.delete(projectsUrl + "/" + encodeURIComponent(id), { data: { version } })),
   deployment: (p: ManagedProject, user: number, operation: "status" | "deploy" | "probe" | "prepare", candidate = "") =>
     unpack<Deployment>(request.post(projectsUrl + "/" + encodeURIComponent(p.id) + "/members/" + user + "/deployment",
       { operation, version: p.version, candidate })),

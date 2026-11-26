@@ -171,6 +171,20 @@ class AssistantAction(BaseModel):
     candidate: str = Field(default="", max_length=100)
 
 
+class ProjectDeletion(BaseModel):
+    version: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+@teams.get("/projects/{project}/deletion")
+def project_deletion_preview(project: str):
+    return call("project-deletion", project=project, operation="preview")
+
+
+@teams.delete("/projects/{project}")
+def delete_project(project: str, change: ProjectDeletion, user: UserPayload = Depends(UserPayload.get_login_user)):
+    return call("project-deletion", project=project, operation="delete", version=change.version, actor=user.user_id)
+
+
 @teams.post("/projects/{project}/assistant")
 def project_assistant(project: str, change: AssistantAction):
     return call("project-assistant", project=project, **change.model_dump())

@@ -367,7 +367,8 @@ print(json.dumps(result))
 
     def dispatch(self, req):
         action = req["action"]
-        if action in ("project-directory", "project-save", "project-invite", "project-revoke-user", "project-assistant", "project-deployment"):
+        if action in ("project-directory", "project-save", "project-invite", "project-revoke-user", "project-assistant",
+                      "project-deployment", "project-deletion"):
             from project_console.administration import Administration
             from project_console.store import Problem as ProjectProblem
             admin = Administration(self.cfg, lambda: [row["name"] for row in self.workers()])
@@ -380,6 +381,9 @@ print(json.dumps(result))
                         req["project"], req["operation"], req.get("candidate", ""))
                 if action == "project-save":
                     return admin.save(req["project"], req["change"])
+                if action == "project-deletion":
+                    from project_console.deletion import dispatch
+                    return dispatch(admin, req["project"], req["operation"], req.get("version", ""), req.get("actor"), __file__)
                 if action == "project-deployment":
                     if req["operation"] == "prepare":
                         return admin.retry_member(req["project"], req["user"], req["version"])
@@ -413,6 +417,12 @@ def main():
     try:
         config = Path(os.getenv("FORGEMIND_HOST_CONFIG", "/etc/forgemind/host-manager.json"))
         manager = Manager(json.loads(config.read_text()))
+        if len(sys.argv) == 3 and sys.argv[1] == "--delete-project":
+            from project_console.administration import Administration
+            from project_console.deletion import execute
+            admin = Administration(manager.cfg, lambda: [r["name"] for r in manager.workers()])
+            execute(admin, sys.argv[2])
+            return
         if len(sys.argv) == 5 and sys.argv[1] == "--verify":
             from project_console.administration import Administration
             from project_console.verification import execute

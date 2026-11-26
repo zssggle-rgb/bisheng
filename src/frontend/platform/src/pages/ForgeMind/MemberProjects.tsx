@@ -15,7 +15,7 @@ export function MemberProjects({ member, projects, hosts, reload }: {
     const row = project.members.find(m => m.user === member.user);
     return row ? [{ project, row }] : [];
   });
-  const available = projects.filter(project => !project.members.some(m => m.user === member.user));
+  const available = projects.filter(project => !project.deletion && !project.members.some(m => m.user === member.user));
   const hostNames = new Map(hosts.map(h => [h.name, h.title ? h.title + " · " + h.name : h.name]));
   const machine = (name: string) => hostNames.get(name) || name || t("fmTeam.unassigned");
   const editor = editing && <ProjectTeamForm key={editing.id} initial={editing} user={member.user}
@@ -27,7 +27,8 @@ export function MemberProjects({ member, projects, hosts, reload }: {
       className="rounded-lg border border-border p-4">
       <header className="mb-3 flex items-center justify-between gap-3">
         <h3 className="font-semibold">{project.name}</h3>
-        {!editing && <Button variant="text" onClick={() => setEditing(project)}>{t("fmTeam.edit")}</Button>}
+        {project.deletion ? <span role="status">{t("fmTeam.deletePhase_" + project.deletion.phase)}</span>
+          : !editing && <Button variant="text" onClick={() => setEditing(project)}>{t("fmTeam.edit")}</Button>}
       </header>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
         {(["delegate", "read"] as const).map(feature => <Fragment key={feature}>
@@ -41,7 +42,7 @@ export function MemberProjects({ member, projects, hosts, reload }: {
           t(row.bound ? "fmTeam.bound" : "fmTeam.unbound")].filter(Boolean).join(" · ")}</dd>
       </dl>
       {row.error && <p role="status" className="mt-2">{t("fmTeam." + row.error, { defaultValue: t("fmTeam.pending") })}</p>}
-      {editing?.id === project.id && editor}
+      {!project.deletion && editing?.id === project.id && editor}
     </section>)}
     {!assignments.length && !editing && <p className="text-text-2">{t("fmTeam.noMembership")}</p>}
     {editing && !assignments.some(a => a.project.id === editing.id) && editor}

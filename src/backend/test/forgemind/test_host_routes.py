@@ -92,6 +92,26 @@ class RouteTest(unittest.TestCase):
             self.assertEqual(self.client.get(base + "/projects").status_code, 403)
             self.transport.assert_not_called()
 
+    def test_project_deletion_requires_enabled_tenant_owner_and_confirmed_version(self):
+        from bisheng.common.middleware.admin_scope import requires_expected_management_tenant
+        url = "/api/v1/forgemind/projects/project-" + "c" * 24
+        revision = "a" * 64
+        self.assertTrue(requires_expected_management_tenant("DELETE", url))
+        self.assertFalse(requires_expected_management_tenant("GET", url + "/deletion"))
+        self.assertEqual(self.client.get(url + "/deletion").status_code, 403)
+        self.enterContext(patch.dict("os.environ", FORGEMIND_PROJECTS_ENABLED="1"))
+        for self.user, self.tenant in ((22, 4), (21, 5)):
+            self.assertEqual(self.client.get(url + "/deletion").status_code, 403)
+            self.assertEqual(self.client.request("DELETE", url, json={"version": revision}).status_code, 403)
+        self.user, self.tenant = 21, 4
+        self.assertEqual(self.client.request("DELETE", url, json={"version": ""}).status_code, 422)
+        self.transport.assert_not_called()
+        self.assertEqual(self.client.get(url + "/deletion").status_code, 200)
+        self.transport.assert_called_with("project-deletion", project=url.rsplit("/", 1)[1], operation="preview")
+        self.assertEqual(self.client.request("DELETE", url, json={"version": revision, "actor": 22}).status_code, 200)
+        self.transport.assert_called_with("project-deletion", project=url.rsplit("/", 1)[1],
+                                         operation="delete", version=revision, actor=21)
+
     def test_disable_hook_filters_tenant_and_surfaces_failure(self):
         import asyncio
         from bisheng.forgemind.domain.service import revoke_project_user

@@ -2,12 +2,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { hostApi, teamApi, type ManagedProject } from "@/controllers/API/forgemind";
+import { hostApi, teamApi, type ManagedProject, type ProjectDeletion } from "@/controllers/API/forgemind";
 import { TeamPage } from "./TeamPage";
 
 vi.mock("@/controllers/API/forgemind", () => ({
   hostApi: { list: vi.fn(), summaries: vi.fn() },
-  teamApi: { users: vi.fn(), directory: vi.fn(), save: vi.fn(), invite: vi.fn(), assistant: vi.fn(), deployment: vi.fn() },
+  teamApi: { users: vi.fn(), directory: vi.fn(), save: vi.fn(), invite: vi.fn(), assistant: vi.fn(), deployment: vi.fn(),
+    deletion: vi.fn(), deleteProject: vi.fn() },
   useHostAccess: () => ({ access: { isSuccess: true, data: true }, scope: "test" }),
 }));
 const project = (id: string): ManagedProject => ({ id, name: id, version: id + "-v1", assistant: "",
@@ -93,6 +94,66 @@ function openPage(mode: "members" | "projects" = "members") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   render(<QueryClientProvider client={client}><TeamPage mode={mode} /></QueryClientProvider>);
 }
+
+const preview: ProjectDeletion = { id: "Alpha", name: "Alpha", version: "confirmed-preview", phase: "ready",
+  repository: "org/example", assistantName: "example-bot", assistantState: "registered", brain: "managed",
+  members: [{ user: 3, dev: "worker-1", test: "qa-1" }], blockers: [], steps: [] };
+
+it("previews project resources and rechecks a blocked deletion before requesting any change", async () => {
+  vi.mocked(teamApi.deletion).mockResolvedValueOnce({ ...preview, phase: "blocked", blockers: ["worker_busy"] })
+    .mockResolvedValue(preview);
+  vi.mocked(teamApi.deleteProject).mockImplementation(async () => {
+    projects = projects.filter(p => p.id !== preview.id);
+    return { ...preview, phase: "deleted" };
+  });
+  openPage("projects");
+  fireEvent.click(await screen.findByRole("button", { name: /Alpha/ }));
+  fireEvent.click(screen.getByRole("button", { name: "fmTeam.deleteProject" }));
+  expect(await screen.findByText("org/example")).toBeVisible();
+  expect(screen.getByText(/worker-1/)).toBeVisible();
+  expect(screen.getByText(/qa-1/)).toBeVisible();
+  expect(screen.getByRole("alert")).toHaveTextContent("fmTeam.worker_busy");
+  expect(screen.queryByRole("button", { name: "fmTeam.confirmDelete" })).toBeNull();
+  expect(teamApi.deleteProject).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "hosts.refresh" }));
+  fireEvent.click(await screen.findByRole("button", { name: "fmTeam.confirmDelete" }));
+  await waitFor(() => expect(teamApi.deleteProject).toHaveBeenCalledWith("Alpha", "confirmed-preview"));
+  expect(await screen.findByText("fmTeam.deletedProject")).toBeVisible();
+  expect(screen.queryByRole("button", { name: /Alpha/ })).toBeNull();
+  expect(screen.getByRole("button", { name: /Beta/ })).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "fmTeam.newProject" }));
+  expect(screen.queryByRole("button", { name: "fmTeam.deleteProject" })).toBeNull();
+});
+
+it("reopens a failed deletion and retries the saved operation after a refreshed preview", async () => {
+  projects[0].deletion = { phase: "failed" };
+  vi.mocked(teamApi.deletion).mockResolvedValue({ ...preview, phase: "failed", error: "qa_pending", resource: "qa-1" });
+  vi.mocked(teamApi.deleteProject).mockResolvedValue({ ...preview, phase: "deleting" });
+  openPage("projects");
+  fireEvent.click(await screen.findByRole("button", { name: /Alpha/ }));
+  expect(screen.queryByRole("button", { name: "fmTeam.save" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "fmTeam.deletionProgress" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("qa-1");
+  fireEvent.click(screen.getByRole("button", { name: "fmTeam.retryDeletion" }));
+  expect(await screen.findByText("fmTeam.deletePhase_deleting")).toBeVisible();
+  expect(teamApi.deleteProject).toHaveBeenCalledTimes(1);
+});
+
+it("requires a new confirmation when the deletion preview changes", async () => {
+  const updated = { ...preview, version: "changed-preview", repository: "org/changed" };
+  vi.mocked(teamApi.deletion).mockResolvedValueOnce(preview).mockResolvedValue(updated);
+  vi.mocked(teamApi.deleteProject).mockRejectedValueOnce(new Error("stale_project"))
+    .mockResolvedValue({ ...updated, phase: "deleting" });
+  openPage("projects");
+  fireEvent.click(await screen.findByRole("button", { name: /Alpha/ }));
+  fireEvent.click(screen.getByRole("button", { name: "fmTeam.deleteProject" }));
+  fireEvent.click(await screen.findByRole("button", { name: "fmTeam.confirmDelete" }));
+  expect(await screen.findByText("org/changed")).toBeVisible();
+  expect(screen.getByRole("alert")).toHaveTextContent("fmTeam.stale_project");
+  expect(teamApi.deleteProject).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole("button", { name: "fmTeam.confirmDelete" }));
+  await waitFor(() => expect(teamApi.deleteProject).toHaveBeenLastCalledWith("Alpha", "changed-preview"));
+});
 it("searches existing accounts, then saves a project assignment for the selected native user", async () => {
   openPage();
   fireEvent.click(await screen.findByRole("button", { name: "fmTeam.newMember" }));

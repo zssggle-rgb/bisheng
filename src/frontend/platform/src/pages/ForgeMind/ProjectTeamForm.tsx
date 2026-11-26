@@ -63,9 +63,9 @@ function AssignmentFields({ row, project, hosts, update }: {
     {row.error && <small role="status">{t("fmTeam." + row.error, { defaultValue: t("fmTeam.pending") })}</small>}
   </div>;
 }
-export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved, cancel }: {
+export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved, cancel, remove }: {
   initial: ManagedProject; users: Member[]; hosts: WorkerChoice[]; assistants: ProjectAssistant[];
-  user?: number; saved: (id: string) => Promise<void>; cancel?: () => void;
+  user?: number; saved: (id: string) => Promise<void>; cancel?: () => void; remove?: () => void;
 }) {
   const { t } = useTranslation();
   const [project, setProject] = useState<ManagedProject>(() => user && !initial.members.some(r => r.user === user)
@@ -152,7 +152,9 @@ export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved
     {incomplete && <p role="status">{t("fmTeam.workers_required")}</p>}
     {saving.isError && <p role="alert">{t("fmTeam." + (saving.error as Error)?.message, { defaultValue: t("fmTeam.operationFailed") })}</p>}
     {user && !rows.length && <p role="status">{t("fmTeam.removeOnSave", { project: project.name })}</p>}
-    <div className="mt-auto flex justify-end gap-2">{cancel && <Button variant="outlined" disabled={saving.isLoading}
+    <div className="mt-auto flex justify-end gap-2">{remove && <Button color="danger" variant="text" className="mr-auto"
+      disabled={dirty || saving.isLoading} onClick={remove}>{t("fmTeam.deleteProject")}</Button>}
+      {cancel && <Button variant="outlined" disabled={saving.isLoading}
       onClick={cancel}>{t("cancel")}</Button>}<Button color="primary" disabled={!project.id || !project.name.trim() || saving.isLoading || incomplete || (!!user && !dirty)}
       onClick={() => saving.mutate()}>{t("fmTeam.save")}</Button></div>
   </div>;

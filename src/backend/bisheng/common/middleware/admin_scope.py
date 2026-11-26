@@ -65,6 +65,7 @@ MANAGEMENT_API_PREFIXES: tuple[str, ...] = (
 # Explicit mutating management routes only: shared reads and calls need no new header.
 _EXPECTED_SCOPE_WRITES = (
     (frozenset({"PUT", "POST"}), r"/api/v1/forgemind/(?:projects|hosts)(?:/.*)?"),
+    (frozenset({"DELETE"}), r"/api/v1/forgemind/projects/[^/]+"),
     (frozenset({"PATCH"}), r"/api/v1/guest-link/(?:workflow|assistant)/[^/]+"),
     (frozenset({"POST"}), r"/api/v1/knowledge/space/[^/]+/uploads(?:/[^/]+/previews)?"),
     (
