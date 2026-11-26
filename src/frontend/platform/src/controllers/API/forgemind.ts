@@ -51,6 +51,7 @@ export type Assignment = {
   recipient?: string; confirm?: string; pendingName?: string; pendingKey?: string;
 };
 export type ManagedProject = {
+  provisioning?: { brain?: string; rules?: string };
   applicants?: { key: string; name: string; suffix: string }[];
   botQr?: string;
   chatRoute?: boolean;
@@ -63,7 +64,7 @@ export type AssistantOperation = "status" | "create" | "existing" | "connect";
 export type AssistantStatus = {
   phase: "empty" | "authorizing" | "expired" | "registered" | "connected";
   url?: string; name?: string; appId?: string; canConnect?: boolean;
-  checks?: Partial<Record<"published" | "receive" | "reply" | "callback" | "route" | "members", boolean>>;
+  checks?: Partial<Record<"published" | "receive" | "reply" | "callback" | "route" | "members" | "knowledge", boolean>>;
   callback?: string;
   choices?: { id: string; name: string; appId: string; mode: "existing" | "connect" }[];
 };

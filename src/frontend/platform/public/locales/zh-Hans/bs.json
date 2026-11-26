@@ -1,5 +1,12 @@
 {
   "fmTeam": {
+    "projectBrain": "项目团队脑",
+    "baseRules": "项目基础规则",
+    "setupRetry": "待开通，可重新保存以重试",
+    "check_knowledge": "项目团队脑读取",
+    "github_pending": "开发机尚未取得该仓库的 GitHub 推送和 PR 权限，可在授权后重新保存",
+    "workspace_pending": "开发机目标目录已有其他仓库，请核对工作目录后重新保存",
+    "brainConflict": "项目脑归属冲突，请核对仓库",
     "joinCommand": "请用飞书扫码，在机器人私聊中发送「加入项目」。项目负责人在这里确认首次绑定。",
     "botQr": "项目机器人二维码",
     "downloadBotQr": "下载项目二维码",

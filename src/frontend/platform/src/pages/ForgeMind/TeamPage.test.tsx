@@ -46,6 +46,16 @@ it("offers Feishu creation after the first save, then resumes the official confi
   expect(screen.queryByRole("button", { name: "fmTeam.makeQr" })).toBeNull();
 });
 
+it("shows independent team brain and routing status for a managed project", async () => {
+  projects[0].features = ["read", "delegate"];
+  projects[0].provisioning = { brain: "project_brain_conflict", rules: "ready" };
+  openPage("projects");
+  fireEvent.click(await screen.findByRole("button", { name: /Alpha/ }));
+  expect(screen.getByText(/fmTeam.projectBrain.*fmTeam.brainConflict/)).toBeVisible();
+  expect(screen.getByText(/fmTeam.baseRules.*fmTeam.active/)).toBeVisible();
+  expect(screen.queryByText("fmTeam.defaultSource")).toBeNull();
+});
+
 it("adopts only the selected existing assistant and distinguishes app identity from invitation readiness", async () => {
   vi.mocked(teamApi.assistant).mockImplementation(async (_id, op) => op === "existing"
     ? { phase: "registered", appId: "cli_123", name: "Sample bot" }

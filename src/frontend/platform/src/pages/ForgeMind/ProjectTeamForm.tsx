@@ -93,7 +93,13 @@ export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved
         <Features value={project.features} allowed={features} change={enabled => setProject({ ...project, features: enabled,
           members: project.members.map(row => ({ ...row, features: row.features.filter(f => enabled.includes(f)),
             dev: enabled.includes("delegate") ? row.dev : "", test: enabled.includes("delegate") ? row.test : "" })) })} /></fieldset>
-      {project.features.includes("read") && project.assistant && (Object.keys(sources).length ?
+      {initial.provisioning && <div className="grid gap-1 text-sm" aria-live="polite">
+        {initial.features.includes("read") && <span>{t("fmTeam.projectBrain")} · {t("fmTeam." + (
+          initial.provisioning.brain === "ready" ? "active" : initial.provisioning.brain === "project_brain_conflict" ? "brainConflict" : "setupRetry"))}</span>}
+        {!!initial.features.length && <span>{t("fmTeam.baseRules")} · {t("fmTeam." + (
+          initial.provisioning.rules === "ready" ? "active" : "setupRetry"))}</span>}
+      </div>}
+      {!initial.provisioning && project.features.includes("read") && project.assistant && (Object.keys(sources).length ?
         <Picker label={t("fmTeam.source")} value={project.knowledgeRole || ""} choices={Object.entries(sources)
           .map(([value, label]) => ({ value, label }))} change={knowledgeRole => setProject({ ...project, knowledgeRole })} /> :
         <small>{t("fmTeam.defaultSource")}</small>)}

@@ -46,7 +46,8 @@ export function ProjectAssistantSetup({ project, disabled, connected }: {
       : <small>{t("fmTeam.waitForLink")}</small>)}
     {state?.phase === "registered" && <>
       <span>{state.name} · {state.appId}</span>
-      {state.checks ? <ul className="grid gap-1 text-sm">{(["published", "receive", "reply", "route", "callback", "members"] as const)
+      {state.checks ? <ul className="grid gap-1 text-sm">{(["published", "receive", "reply", "route", "callback", "members", "knowledge"] as const)
+        .filter(k => k !== "knowledge" || state.checks?.knowledge !== undefined)
         .map(k => <li key={k}>{t("fmTeam.check_" + k)} · {t(state.checks![k] === undefined
           ? "fmTeam.notVerified" : state.checks![k] ? "fmTeam.verified" : "fmTeam.pending")}</li>)}</ul>
         : !state.canConnect && <small>{t("fmTeam.runtimePending")}</small>}

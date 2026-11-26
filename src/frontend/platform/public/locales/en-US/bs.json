@@ -1,5 +1,12 @@
 {
   "fmTeam": {
+    "projectBrain": "Project team brain",
+    "baseRules": "Project rules",
+    "setupRetry": "Pending. Save again to retry.",
+    "check_knowledge": "Project team brain access",
+    "github_pending": "The development host needs GitHub push and pull request access to this repository. Save after authorization.",
+    "workspace_pending": "The development workspace contains another repository. Check its path and save again.",
+    "brainConflict": "Team brain belongs to another project. Check the repository.",
     "joinCommand": "Scan with Feishu and send 加入项目 to the bot. The project owner confirms the first binding here.",
     "botQr": "Project bot QR code",
     "downloadBotQr": "Download project QR code",
