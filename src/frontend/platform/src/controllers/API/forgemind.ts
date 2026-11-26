@@ -5,7 +5,8 @@ import request from "@/controllers/request";
 
 const url = "/api/v1/forgemind/hosts";
 const instanceUrl = (name: string) => url + "/instances/" + encodeURIComponent(name);
-export type Host = { name: string; created: string; seen: string | null; online: boolean | null };
+export type Host = { name: string; created: string; seen: string | null; online: boolean | null;
+  retirement?: "pending" | "retired" | "destroyed" | "purged"; disposable?: boolean };
 export type Instance = {
   uuid: string; title: string; power: string; cpus: number; memory: number; disk: number | null;
   user_ip: string | null; platform_ip: string | null; image: string | null; mutable: boolean; connection: boolean;
@@ -79,7 +80,19 @@ export type AssistantStatus = {
   callback?: string;
   choices?: { id: string; name: string; appId: string; mode: "existing" | "connect" }[];
 };
-type TeamDirectory = { projects: ManagedProject[]; assistants: ProjectAssistant[] };
+type TeamDirectory = { projects: ManagedProject[]; assistants: ProjectAssistant[]; pendingRemovals?: number[] };
+export type RetirementAction = "removeMember" | "retireHost" | "destroy" | "purge";
+export type Retirement = { phase: string; version: string; blockers: string[]; error?: string; uuid?: string;
+  items: { project: string; dev: string; test: string; features?: Feature[]; manualHandoff?: boolean }[]; volumes?: string[] };
+function retirementUrl(action: RetirementAction, id: string) {
+  if (action === "removeMember") return "/api/v1/forgemind/members/" + encodeURIComponent(id) + "/removal";
+  return instanceUrl(id) + (action === "retireHost" ? "/retirement" : "/disposal/" + action);
+}
+export const retirementApi = {
+  preview: (action: RetirementAction, id: string) => unpack<Retirement>(request.get(retirementUrl(action, id))),
+  confirm: (action: RetirementAction, id: string, version: string, confirmation: string) =>
+    unpack<Retirement>(request.post(retirementUrl(action, id), { version, confirmation })),
+};
 export type Deployment = { phase?: "queued" | "running" | "failed" | "passed"; error?: string; finished?: number;
   receipt?: { candidate: string; observed: string | null; target: string; url: string; healthy: boolean; matches: boolean } };
 const projectsUrl = "/api/v1/forgemind/projects";

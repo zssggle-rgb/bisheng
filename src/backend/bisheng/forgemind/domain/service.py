@@ -55,7 +55,7 @@ def request_controller(action: str, **fields) -> dict:
     target = os.getenv("FORGEMIND_CONTROLLER", "")
     if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9.-]*", target):
         raise ControllerUnavailable
-    timeout = 120 if action == "connect" else 45
+    timeout = 120 if action in ("connect", "host-disposal", "member-removal", "host-retirement") else 45
     if action == "project-save" or (action == "project-deployment" and fields.get("operation") == "prepare"):
         timeout = 600
     elif action == "project-assistant" and fields.get("operation") == "connect":

@@ -9,6 +9,7 @@ import { hostApi, teamApi, useHostAccess, type ManagedProject, type ProjectDelet
 import { Failure } from "./HostFields";
 import { availableHosts, Picker, ProjectTeamForm } from "./ProjectTeamForm";
 import { MemberProjects } from "./MemberProjects";
+import { RetirementDialog } from "./RetirementDialog";
 import { ProjectDeletionDialog, ReleasedWorkspaces } from "./ProjectDeletionDialog";
 
 type Mode = "members" | "projects";
@@ -34,6 +35,7 @@ function Directory({ scope, mode }: { scope: string; mode: Mode }) {
   const [newId, setNewId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Pick<ManagedProject, "id" | "name"> | null>(null);
   const [completed, setCompleted] = useState<ProjectDeletion | null>(null);
+  const [removing, setRemoving] = useState<{ user: number; name: string } | null>(null);
   const newProject = () => {
     setCompleted(null);
     const id = "project-" + Array.from(crypto.getRandomValues(new Uint8Array(12)), x => x.toString(16).padStart(2, "0")).join("");
@@ -49,13 +51,16 @@ function Directory({ scope, mode }: { scope: string; mode: Mode }) {
   if (!users.data || !directory.data || !hosts.data) return <p role="status">{t("hosts.loading")}</p>;
   const projects = directory.data.projects;
   const isMember = mode === "members";
-  const current = users.data.find(u => String(u.user) === selected);
+  const pendingRemovals = directory.data.pendingRemovals || [];
+  const accounts = [...users.data, ...pendingRemovals.filter(id => !users.data!.some(u => u.user === id))
+    .map(user => ({ user, name: "#" + user, account: "" }))];
+  const current = accounts.find(u => String(u.user) === selected);
   const currentProject = isMember ? undefined : projects.find(p => p.id === selected);
-  const choices = hosts.data.map(h => ({ ...h, title: summaries.data?.[h.name]?.title }));
-  const memberIds = new Set(projects.flatMap(p => p.members.map(row => row.user)));
+  const choices = hosts.data.filter(h => !h.retirement).map(h => ({ ...h, title: summaries.data?.[h.name]?.title }));
+  const memberIds = new Set([...projects.flatMap(p => p.members.map(row => row.user)), ...pendingRemovals]);
   const used = new Set(projects.map(p => p.assistant));
   const assistants = directory.data.assistants.filter(a => !used.has(a.id) || a.id === currentProject?.assistant);
-  const cards = isMember ? users.data.filter(u => memberIds.has(u.user)).map(u => {
+  const cards = isMember ? accounts.filter(u => memberIds.has(u.user)).map(u => {
     const joined = projects.filter(p => p.members.some(m => m.user === u.user));
     const rows = joined.flatMap(p => p.members.filter(m => m.user === u.user));
     const bound = rows.some(row => row.bound);
@@ -91,8 +96,10 @@ function Directory({ scope, mode }: { scope: string; mode: Mode }) {
         {isMember && (selected === "new-member" || current && !memberIds.has(current.user)) && <Picker label={t("fmTeam.existingUser")}
           placeholder={t("fmTeam.searchUser")} searchable value={current ? String(current.user) : ""} choices={users.data.filter(u => !memberIds.has(u.user))
             .map(u => ({ value: String(u.user), label: u.name + " · " + u.account }))} change={setSelected} />}
-        {isMember && current && <MemberProjects key={current.user} member={current} projects={projects} hosts={choices}
+        {isMember && current && !pendingRemovals.includes(current.user) && <MemberProjects key={current.user} member={current} projects={projects} hosts={choices}
           reload={async () => { await directory.refetch({ throwOnError: true }); }} />}
+        {isMember && current && memberIds.has(current.user) && <Button variant="outlined" color="danger" onClick={() => setRemoving(current)}>
+          {t(pendingRemovals.includes(current.user) ? "fmTeam.cleanupPending" : "fmTeam.removeMember")}</Button>}
         {!isMember && currentProject?.deletion && <Button variant="outlined"
           onClick={() => setDeleting(currentProject)}>{t("fmTeam.deletionProgress")}</Button>}
         {!isMember && !currentProject?.deletion && selected !== null && (currentProject || newId === selected) && <ProjectTeamForm key={[selected, currentProject?.version].join("/")}
@@ -104,5 +111,7 @@ function Directory({ scope, mode }: { scope: string; mode: Mode }) {
     {deleting && <ProjectDeletionDialog key={deleting.id} scope={scope} project={deleting} users={users.data}
       updated={() => { void directory.refetch(); }} close={() => { setDeleting(null); void directory.refetch(); }}
       deleted={result => { setCompleted(result); setDeleting(null); setSelected(null); void directory.refetch(); }} />}
+    {removing && <RetirementDialog action="removeMember" id={String(removing.user)} label={removing.name} scope={scope}
+      close={() => { setRemoving(null); setSelected(null); }} updated={() => { void directory.refetch(); }} />}
   </div></main>;
 }

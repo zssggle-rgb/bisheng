@@ -47,6 +47,14 @@ class Title(Instance):
     title: str = Field(min_length=1, max_length=80)
 
 
+class ConfirmVersion(BaseModel):
+    version: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class ConfirmHost(ConfirmVersion):
+    confirmation: str = Field(min_length=1, max_length=128)
+
+
 def call(action, **fields):
     try:
         return resp_200(data=request_controller(action, **fields))
@@ -109,6 +117,28 @@ def connect(name: str, data: Instance):
     return call("connect", name=name, uuid=str(data.uuid))
 
 
+@protected.get("/instances/{name}/retirement")
+def host_retirement(name: str):
+    return call("host-retirement", name=name, operation="preview")
+
+
+@protected.post("/instances/{name}/retirement")
+def retire_host(name: str, data: ConfirmVersion, user: UserPayload = Depends(UserPayload.get_login_user)):
+    return call("host-retirement", name=name, operation="retire", version=data.version, actor=user.user_id)
+
+
+@protected.get("/instances/{name}/disposal/{kind}")
+def disposal_preview(name: str, kind: Literal["destroy", "purge"]):
+    return call("host-disposal", name=name, operation=kind + "-preview")
+
+
+@protected.post("/instances/{name}/disposal/{kind}")
+def dispose_host(name: str, kind: Literal["destroy", "purge"], data: ConfirmHost,
+                 user: UserPayload = Depends(UserPayload.get_login_user)):
+    return call("host-disposal", name=name, operation=kind, version=data.version,
+                confirmation=data.confirmation, actor=user.user_id)
+
+
 router.include_router(protected, prefix=BASE_PATH)
 
 
@@ -149,6 +179,28 @@ async def members():
 @teams.get("/projects")
 def projects():
     return call("project-directory")
+
+
+async def member_cleanup(user_id, **fields):
+    # The configured owner and tenant guard above covers this controller's receipts.
+    active = user_id in await tenant_accounts(get_current_tenant_id())
+    kwargs = {} if active else {"pending_only": True}
+    result = await run_in_threadpool(call, "member-removal", user=user_id, **fields, **kwargs)
+    if not active and result.data.get("error") == "unauthorized":
+        raise UnAuthorizedError.http_exception()
+    return result
+
+
+@teams.get("/members/{user_id}/removal")
+async def member_removal(user_id: int):
+    return await member_cleanup(user_id, operation="preview")
+
+
+@teams.post("/members/{user_id}/removal")
+async def remove_member(user_id: int, data: ConfirmVersion, user: UserPayload = Depends(UserPayload.get_login_user)):
+    if user_id == user.user_id:
+        raise UnAuthorizedError.http_exception()
+    return await member_cleanup(user_id, operation="remove", version=data.version, actor=user.user_id)
 
 
 @teams.put("/projects/{project}")

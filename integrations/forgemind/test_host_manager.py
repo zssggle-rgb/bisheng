@@ -1,10 +1,12 @@
 import json
+from contextlib import nullcontext
 from pathlib import Path
 import sqlite3
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
@@ -161,6 +163,31 @@ class HostManagerTest(unittest.TestCase):
                 self.m.details(self.name)
         with self.assertRaisesRegex(Problem, "invalid"):
             self.m.dispatch({"action":"shell"})
+
+    def test_disposal_reconciles_remote_success_after_transport_failure(self):
+        self.m.cfg["create_script"] = "/opt/create"
+        path = self.m.retirement_path(self.name)
+        path.parent.mkdir()
+        path.write_text(json.dumps(dict(name=self.name, phase="retired", uuid=self.uid)))
+        revision = "a"*64
+        result = dict(phase="destroyed", volumes=["disk"], deleted=[], uuid=self.uid,
+                      name=self.name, version=revision)
+        req = dict(name=self.name, operation="destroy", actor=17, confirmation=self.name, version=revision)
+        deps = {"project_console.administration": SimpleNamespace(Administration=Mock()),
+                "project_console.retirement": SimpleNamespace(host_dependencies=lambda *_: []),
+                "project_console.store": SimpleNamespace(locked=lambda *_: nullcontext())}
+        with patch.dict("sys.modules", deps), patch.object(self.m, "workers", return_value=[]), \
+                patch.object(self.m, "page_created", return_value=True), patch.object(self.m, "remote",
+                    side_effect=[json.dumps(dict(result, phase="retired")), TimeoutError(), json.dumps(result)]) as remote:
+            with self.assertRaisesRegex(Problem, "identity_changed"):
+                self.m.disposal(dict(req, confirmation="other"))
+            with self.assertRaises(TimeoutError):
+                self.m.disposal(req)
+            self.assertEqual(json.loads(path.read_bytes())["phase"], "retired")
+            self.assertEqual(self.m.disposal(dict(name=self.name, operation="destroy-preview"))["phase"], "destroyed")
+            record = json.loads(path.read_bytes())
+            self.assertEqual((record["phase"], record["destroy"]["actor"], record["deleted"]), ("destroyed", 17, []))
+            self.assertEqual([c.args[1] for c in remote.call_args_list], ["destroy-preview", "destroy", "destroy-preview"])
 
 
 if __name__ == "__main__":

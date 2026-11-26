@@ -59,6 +59,30 @@ class RouteTest(unittest.TestCase):
             self.assertEqual(self.client.post(self.root,json=dict(self.payload,**overrides)).status_code,422)
         self.transport.assert_not_called()
 
+    def test_retirement_preview_and_separate_confirmations_require_owner(self):
+        host = self.root + "/instances/test-guest"
+        revision = "a" * 64
+        for path in ("/retirement", "/disposal/destroy", "/disposal/purge"):
+            self.assertEqual(self.client.get(host + path).status_code, 200)
+            self.assertEqual(self.client.post(host + path, json={"version": "x"}).status_code, 422)
+            self.assertEqual(self.client.post(host + path, json={"version": revision, "confirmation": "test-guest"}).status_code, 200)
+            self.assertEqual(self.transport.call_args.kwargs["actor"], 21)
+        self.user = 22
+        self.assertEqual(self.client.post(host + "/disposal/purge", json={"version": revision, "confirmation": "test-guest"}).status_code, 403)
+
+    def test_member_removal_requires_current_tenant_membership(self):
+        self.enterContext(patch.dict("os.environ", FORGEMIND_PROJECTS_ENABLED="1"))
+        base = "/api/v1/forgemind/members/8/removal"
+        with patch("bisheng.forgemind.api.router.tenant_accounts", return_value={}):
+            self.transport.return_value = {"error": "unauthorized"}
+            self.assertEqual(self.client.get(base).status_code, 403)
+            self.transport.assert_called_with("member-removal", user=8, operation="preview", pending_only=True)
+            self.transport.return_value = {"result": {"phase": "pending"}}
+            self.assertEqual(self.client.get(base).json()["data"]["result"]["phase"], "pending")
+        with patch("bisheng.forgemind.api.router.tenant_accounts", return_value={8: {}}):
+            self.assertEqual(self.client.post(base, json={"version": "b"*64, "actor": 55}).status_code, 200)
+            self.transport.assert_called_with("member-removal", user=8, operation="remove", actor=21, version="b"*64)
+
     def test_transport_failure_is_sanitized(self):
         self.transport.side_effect=ControllerUnavailable
         self.assertEqual(self.client.get(self.root).status_code,500)

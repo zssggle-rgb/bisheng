@@ -2,11 +2,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { hostApi, teamApi, type ManagedProject, type ProjectDeletion } from "@/controllers/API/forgemind";
+import { hostApi, retirementApi, teamApi, type ManagedProject, type ProjectDeletion } from "@/controllers/API/forgemind";
 import { TeamPage } from "./TeamPage";
 
 vi.mock("@/controllers/API/forgemind", () => ({
   hostApi: { list: vi.fn(), summaries: vi.fn() },
+  retirementApi: { preview: vi.fn(), confirm: vi.fn() },
   teamApi: { users: vi.fn(), directory: vi.fn(), save: vi.fn(), invite: vi.fn(), assistant: vi.fn(), deployment: vi.fn(),
     deletion: vi.fn(), deleteProject: vi.fn() },
   useHostAccess: () => ({ access: { isSuccess: true, data: true }, scope: "test" }),
@@ -29,6 +30,22 @@ beforeEach(() => {
   });
 });
 afterEach(cleanup);
+
+it("removes a member only after the cross-project impact has been confirmed", async () => {
+  projects[0].members.push({ user: 3, features: ["read"], dev: "", test: "" });
+  vi.mocked(retirementApi.preview).mockResolvedValue({ phase: "ready", version: "opened", blockers: [],
+    items: [{ project: "Alpha", dev: "", test: "", features: ["read"] }] });
+  vi.mocked(retirementApi.confirm).mockResolvedValue({ phase: "removed", version: "updated", blockers: [], items: [] });
+  openPage("members");
+  fireEvent.click(await screen.findByRole("button", { name: /First Member/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "fmTeam.removeMember" }));
+  const confirm = await screen.findByRole("button", { name: "fmTeam.confirmAction" });
+  await waitFor(() => expect(confirm).toBeEnabled());
+  expect(retirementApi.confirm).not.toHaveBeenCalled();
+  fireEvent.click(confirm);
+  expect(await screen.findByText("fmTeam.removeMemberDone")).toBeVisible();
+  expect(retirementApi.confirm).toHaveBeenCalledWith("removeMember", "3", "opened", "");
+});
 
 it("offers Feishu creation after the first save, then resumes the official confirmation", async () => {
   vi.mocked(teamApi.save).mockImplementationOnce(async p => {
