@@ -354,7 +354,9 @@ print(json.dumps(result))
                 error = str(exc) if isinstance(exc, Problem) else "operation_failed"
                 if isinstance(exc, subprocess.CalledProcessError) and job["phase"] == "creating":
                     message = exc.stderr or ""
-                    if "User IP already" in message or "User IP is already" in message:
+                    if "Insufficient VM pool capacity" in message or "No space left on device" in message:
+                        error = "pool_capacity"
+                    elif "User IP already" in message or "User IP is already" in message:
                         error = "address_in_use"
                     elif "User IP" in message or "user IP" in message:
                         error = "invalid_address"
@@ -365,7 +367,7 @@ print(json.dumps(result))
 
     def dispatch(self, req):
         action = req["action"]
-        if action in ("project-directory", "project-save", "project-invite", "project-revoke-user", "project-assistant"):
+        if action in ("project-directory", "project-save", "project-invite", "project-revoke-user", "project-assistant", "project-deployment"):
             from project_console.administration import Administration
             from project_console.store import Problem as ProjectProblem
             admin = Administration(self.cfg, lambda: [row["name"] for row in self.workers()])
@@ -378,6 +380,12 @@ print(json.dumps(result))
                         req["project"], req["operation"], req.get("candidate", ""))
                 if action == "project-save":
                     return admin.save(req["project"], req["change"])
+                if action == "project-deployment":
+                    if req["operation"] == "prepare":
+                        return admin.retry_member(req["project"], req["user"], req["version"])
+                    from project_console.verification import dispatch
+                    return dispatch(admin, req["project"], req["user"], req["operation"], req["version"],
+                                    req.get("candidate", ""), __file__)
                 if action == "project-revoke-user":
                     return admin.revoke_user(req["user"])
                 return admin.invite(req["project"], req["user"])
@@ -405,6 +413,12 @@ def main():
     try:
         config = Path(os.getenv("FORGEMIND_HOST_CONFIG", "/etc/forgemind/host-manager.json"))
         manager = Manager(json.loads(config.read_text()))
+        if len(sys.argv) == 5 and sys.argv[1] == "--verify":
+            from project_console.administration import Administration
+            from project_console.verification import execute
+            admin = Administration(manager.cfg, lambda: [r["name"] for r in manager.workers()])
+            execute(admin, sys.argv[2], int(sys.argv[3]), sys.argv[4])
+            return
         if len(sys.argv) == 3 and sys.argv[1] == "--job":
             manager.build(sys.argv[2])
             return

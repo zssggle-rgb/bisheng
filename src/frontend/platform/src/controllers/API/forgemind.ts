@@ -51,7 +51,9 @@ export type Assignment = {
   recipient?: string; confirm?: string; pendingName?: string; pendingKey?: string;
 };
 export type ManagedProject = {
-  provisioning?: { brain?: string; rules?: string };
+  provisioning?: { brain?: string; rules?: string; skill?: string; service?: string; repositorySync?: string; lastSyncedAt?: string };
+  qaPort?: number | null; qaPath?: string;
+  guidance?: string;
   applicants?: { key: string; name: string; suffix: string }[];
   botQr?: string;
   chatRoute?: boolean;
@@ -69,14 +71,20 @@ export type AssistantStatus = {
   choices?: { id: string; name: string; appId: string; mode: "existing" | "connect" }[];
 };
 type TeamDirectory = { projects: ManagedProject[]; assistants: ProjectAssistant[] };
+export type Deployment = { phase?: "queued" | "running" | "failed" | "passed"; error?: string; finished?: number;
+  receipt?: { candidate: string; observed: string | null; target: string; url: string; healthy: boolean; matches: boolean } };
 const projectsUrl = "/api/v1/forgemind/projects";
 export const teamApi = {
+  deployment: (p: ManagedProject, user: number, operation: "status" | "deploy" | "probe" | "prepare", candidate = "") =>
+    unpack<Deployment>(request.post(projectsUrl + "/" + encodeURIComponent(p.id) + "/members/" + user + "/deployment",
+      { operation, version: p.version, candidate })),
   assistant: (project: string, operation: AssistantOperation = "status", candidate = "") =>
     unpack<AssistantStatus>(request.post(projectsUrl + "/" + encodeURIComponent(project) + "/assistant", { operation, candidate })),
   directory: () => unpack<TeamDirectory>(request.get(projectsUrl)),
   users: () => unpack<Member[]>(request.get("/api/v1/forgemind/members")),
   save: (p: ManagedProject) => unpack<{ id: string }>(request.put(projectsUrl + "/" + encodeURIComponent(p.id),
-    { name: p.name, repository: p.repository, assistant: p.assistant, knowledgeRole: p.knowledgeRole, version: p.version, features: p.features,
+    { name: p.name, repository: p.repository, assistant: p.assistant, knowledgeRole: p.knowledgeRole, version: p.version,
+      qaPort: p.qaPort, qaPath: p.qaPath,
       members: p.members.map(({ user, features, dev, test, legacy, recipient, confirm }) =>
         ({ user, features, dev, test, legacy, recipient, confirm })) })),
   invite: (project: string, user: number) => unpack<{ qr: string; until: number }>(

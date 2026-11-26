@@ -7,7 +7,7 @@ import { TeamPage } from "./TeamPage";
 
 vi.mock("@/controllers/API/forgemind", () => ({
   hostApi: { list: vi.fn(), summaries: vi.fn() },
-  teamApi: { users: vi.fn(), directory: vi.fn(), save: vi.fn(), invite: vi.fn(), assistant: vi.fn() },
+  teamApi: { users: vi.fn(), directory: vi.fn(), save: vi.fn(), invite: vi.fn(), assistant: vi.fn(), deployment: vi.fn() },
   useHostAccess: () => ({ access: { isSuccess: true, data: true }, scope: "test" }),
 }));
 const project = (id: string): ManagedProject => ({ id, name: id, version: id + "-v1", assistant: "",
@@ -37,6 +37,7 @@ it("offers Feishu creation after the first save, then resumes the official confi
   openPage("projects");
   fireEvent.click(await screen.findByRole("button", { name: "fmTeam.newProject" }));
   expect(screen.queryByLabelText("fmTeam.assistant")).toBeNull();
+  expect(screen.queryByRole("checkbox")).toBeNull();
   fireEvent.change(screen.getByLabelText("fmTeam.projectName"), { target: { value: "New project" } });
   fireEvent.click(screen.getByRole("button", { name: "fmTeam.save" }));
   const create = await screen.findByRole("button", { name: "fmTeam.createAssistant" });
@@ -44,6 +45,25 @@ it("offers Feishu creation after the first save, then resumes the official confi
   fireEvent.click(create);
   expect(await screen.findByRole("link", { name: "fmTeam.authorizeApp" })).toHaveAttribute("href", "https://open.feishu.cn/page/cli?user_code=example");
   expect(screen.queryByRole("button", { name: "fmTeam.makeQr" })).toBeNull();
+});
+
+it("deploys the saved member pair and displays the SHA reported by the running service", async () => {
+  const p = projects[0];
+  p.provisioning = { brain: "ready", rules: "ready" };
+  p.members = [{ user: 3, dev: "dev-1", test: "test-1", features: ["delegate"], paired: true }];
+  const sha = "a".repeat(40);
+  let deployed = false;
+  vi.mocked(teamApi.deployment).mockImplementation(async (_p, uid, operation) => {
+    expect(uid).toBe(3);
+    if (operation === "deploy") { deployed = true; return { phase: "queued" }; }
+    return deployed ? { phase: "passed", receipt: { candidate: sha, observed: sha, healthy: true,
+      matches: true, target: "test-1", url: "http://test-1:18080" } } : {};
+  });
+  openPage("projects");
+  fireEvent.click(await screen.findByRole("button", { name: /Alpha/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "fmTeam.qaDeploy" }));
+  expect(await screen.findByRole("link", { name: /test-1:18080/ })).toBeVisible();
+  expect(screen.getAllByText(sha)).toHaveLength(2);
 });
 
 it("shows independent team brain and routing status for a managed project", async () => {

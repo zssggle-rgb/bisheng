@@ -61,6 +61,7 @@ def request_controller(action: str, **fields) -> dict:
              "-oConnectTimeout=5", target, "forgemind-host-manager"],
             input=json.dumps(dict(action=action, **fields)), capture_output=True,
             text=True, check=True, timeout=300 if action == "project-save" or (
+                action == "project-deployment" and fields.get("operation") == "prepare") or (
                 action == "project-assistant" and fields.get("operation") == "connect") else 120 if action == "connect" else 45,
         )
         response = json.loads(result.stdout)

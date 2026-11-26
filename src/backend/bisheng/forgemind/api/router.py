@@ -126,9 +126,10 @@ class ProjectChange(BaseModel):
     assistant: str = Field(default="", max_length=100)
     knowledgeRole: str = Field(default="", max_length=100)
     name: str = Field(min_length=1, max_length=80)
-    repository: str = Field(max_length=300)
+    repository: str = Field(default="", max_length=300)
     version: str = Field(pattern=r"^(?:[0-9a-f]{64})?$")
-    features: list[Literal["delegate", "read"]] = Field(max_length=2)
+    qaPort: int | None = Field(default=None, ge=1, le=65535)
+    qaPath: str = Field(default="", max_length=256, pattern=r"^(?:/[a-zA-Z0-9_./%-]*)?$")
     members: list[Assignment] = Field(max_length=500)
 
 
@@ -173,6 +174,19 @@ class AssistantAction(BaseModel):
 @teams.post("/projects/{project}/assistant")
 def project_assistant(project: str, change: AssistantAction):
     return call("project-assistant", project=project, **change.model_dump())
+
+
+class DeploymentAction(BaseModel):
+    operation: Literal["status", "deploy", "probe", "prepare"]
+    version: str = Field(pattern=r"^[0-9a-f]{64}$")
+    candidate: str = Field(default="", pattern=r"^(?:[0-9a-f]{40})?$")
+
+
+@teams.post("/projects/{project}/members/{user_id}/deployment")
+async def member_deployment(project: str, user_id: int, change: DeploymentAction):
+    if user_id not in await tenant_accounts(get_current_tenant_id()):
+        raise UnAuthorizedError.http_exception()
+    return await run_in_threadpool(call, "project-deployment", project=project, user=user_id, **change.model_dump())
 
 
 router.include_router(teams)

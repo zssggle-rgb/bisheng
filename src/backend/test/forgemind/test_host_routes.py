@@ -77,6 +77,12 @@ class RouteTest(unittest.TestCase):
             self.assertEqual(self.client.get(base + "/members").json()["data"]["result"], list(directory.values()))
             self.assertEqual(self.client.put(base + "/projects/example", json=data).status_code, 200)
             self.assertEqual(self.transport.call_args.args, ("project-save",))
+            self.assertNotIn("features", self.transport.call_args.kwargs["change"])
+            verify = dict(operation="deploy", version="0" * 64)
+            endpoint = base + "/projects/example/members/"
+            self.assertEqual(self.client.post(endpoint + "8/deployment", json=verify).status_code, 200)
+            self.assertEqual(self.transport.call_args.args, ("project-deployment",))
+            self.assertEqual(self.client.post(endpoint + "9/deployment", json=verify).status_code, 403)
             self.assertEqual(self.client.post(base + "/projects/example/invites/8").status_code, 200)
             self.transport.reset_mock()
             data["members"][0]["user"] = 9

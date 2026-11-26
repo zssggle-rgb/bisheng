@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSelectLabels } from "@/components/bs-comp/formFields/useSelectLabels";
 import { ProjectAssistantSetup } from "./ProjectAssistantSetup";
+import { DeploymentCheck } from "./DeploymentCheck";
 import { teamApi, type Assignment, type Feature, type Host, type ManagedProject, type Member, type ProjectAssistant } from "@/controllers/API/forgemind";
 
 const features: Feature[] = ["delegate", "read"];
@@ -76,6 +77,8 @@ export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved
     return account ? account.name + " · " + account.account : String(id);
   };
   const rows = user ? project.members.filter(m => m.user === user) : project.members;
+  const incomplete = rows.some(r => r.features.includes("delegate") && (!r.dev || !r.test) &&
+    !initial.members.some(old => old.user === r.user && old.features.includes("delegate") && old.dev === r.dev && old.test === r.test));
   const sources = assistants.find(a => a.id === project.assistant)?.sources || {};
   const changeRow = (id: number, changes: Partial<Assignment>) => setProject(previous => ({ ...previous,
     members: previous.members.map(row => row.user === id ? { ...row, ...changes } : row) }));
@@ -89,15 +92,23 @@ export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved
         initial.version ? <ProjectAssistantSetup project={initial.id} disabled={dirty || saving.isLoading}
           connected={() => saved(initial.id)} /> : <p>{t("fmTeam.assistantAfterSave")}</p>}
       {initial.chatRoute === false && <small>{t("fmTeam.missingChatRoute")}</small>}
-      <fieldset className="grid gap-2"><legend>{t("fmTeam.projectFeatures")}</legend>
-        <Features value={project.features} allowed={features} change={enabled => setProject({ ...project, features: enabled,
-          members: project.members.map(row => ({ ...row, features: row.features.filter(f => enabled.includes(f)),
-            dev: enabled.includes("delegate") ? row.dev : "", test: enabled.includes("delegate") ? row.test : "" })) })} /></fieldset>
+      <details><summary>{t("fmTeam.qaEndpoint")}</summary><div className="mt-2 grid grid-cols-2 gap-3">
+        <label>{t("fmTeam.qaPort")}<Input type="number" min={1} max={65535} value={project.qaPort ?? ""}
+          onChange={e => setProject({ ...project, qaPort: e.target.value ? Number(e.target.value) : null })} /></label>
+        <label>{t("fmTeam.qaPath")}<Input value={project.qaPath || ""} placeholder="/"
+          onChange={e => setProject({ ...project, qaPath: e.target.value })} /></label></div></details>
       {initial.provisioning && <div className="grid gap-1 text-sm" aria-live="polite">
         {initial.features.includes("read") && <span>{t("fmTeam.projectBrain")} · {t("fmTeam." + (
           initial.provisioning.brain === "ready" ? "active" : initial.provisioning.brain === "project_brain_conflict" ? "brainConflict" : "setupRetry"))}</span>}
         {!!initial.features.length && <span>{t("fmTeam.baseRules")} · {t("fmTeam." + (
           initial.provisioning.rules === "ready" ? "active" : "setupRetry"))}</span>}
+        {initial.guidance ? <details><summary>{t("fmTeam.projectSkill")} · {t("fmTeam.active")}</summary>
+          <pre className="mt-2 whitespace-pre-wrap break-words rounded border p-3">{initial.guidance}</pre></details> :
+          initial.provisioning.skill && <span>{t("fmTeam.projectSkill")} · {t(initial.provisioning.skill === "ready" ? "fmTeam.active" : "fmTeam.setupRetry")}</span>}
+        {initial.provisioning.repositorySync && <span>{t("fmTeam.repoSync")} · {t("fmTeam.sync_" + initial.provisioning.repositorySync)}
+          {initial.provisioning.lastSyncedAt && " · " + initial.provisioning.lastSyncedAt}</span>}
+        <Button className="justify-self-start" variant="text" disabled={dirty || saving.isLoading}
+          onClick={() => saved(initial.id)}>{t("hosts.refresh")}</Button>
       </div>}
       {!initial.provisioning && project.features.includes("read") && project.assistant && (Object.keys(sources).length ?
         <Picker label={t("fmTeam.source")} value={project.knowledgeRole || ""} choices={Object.entries(sources)
@@ -113,6 +124,9 @@ export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved
           onClick={() => setProject({ ...project, members: project.members.filter(m => m.user !== row.user) })}>
           {t("fmTeam.remove")}</Button>}</div>
       <AssignmentFields row={row} project={project} hosts={hosts} update={changes => changeRow(row.user, changes)} />
+      {initial.provisioning && initial.members.some(r => r.user === row.user) && row.features.includes("delegate") && row.dev && row.test &&
+        <DeploymentCheck project={initial} row={initial.members.find(r => r.user === row.user)!} disabled={dirty || saving.isLoading}
+          reload={() => saved(initial.id)} />}
     </section>)}
     {initial.assistant && !user && <section className="grid gap-2 border-t border-border pt-4">
       <strong>{project.assistantName} · {t("fmTeam.botQr")}</strong>
@@ -135,10 +149,11 @@ export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved
         })}
       </fieldset>}
     </section>}
+    {incomplete && <p role="status">{t("fmTeam.workers_required")}</p>}
     {saving.isError && <p role="alert">{t("fmTeam." + (saving.error as Error)?.message, { defaultValue: t("fmTeam.operationFailed") })}</p>}
     {user && !rows.length && <p role="status">{t("fmTeam.removeOnSave", { project: project.name })}</p>}
     <div className="mt-auto flex justify-end gap-2">{cancel && <Button variant="outlined" disabled={saving.isLoading}
-      onClick={cancel}>{t("cancel")}</Button>}<Button color="primary" disabled={!project.id || !project.name.trim() || saving.isLoading || (!!user && !dirty)}
+      onClick={cancel}>{t("cancel")}</Button>}<Button color="primary" disabled={!project.id || !project.name.trim() || saving.isLoading || incomplete || (!!user && !dirty)}
       onClick={() => saving.mutate()}>{t("fmTeam.save")}</Button></div>
   </div>;
 }
