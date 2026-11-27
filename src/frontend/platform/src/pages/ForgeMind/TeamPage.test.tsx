@@ -33,7 +33,7 @@ afterEach(cleanup);
 
 it("shows the published bot name until Feishu confirms the requested name", async () => {
   projects[0] = { ...projects[0], assistant: "alpha-bot", assistantName: "Original" };
-  const naming = { appId: "cli_alpha", name: "Original", desired: "Alpha 助手", status: "publish" as const };
+  const naming = { appId: "cli_alpha", name: "Original", desired: "Alpha Assistant", status: "publish" as const };
   vi.mocked(teamApi.assistant).mockResolvedValueOnce({ phase: "connected", naming })
     .mockImplementationOnce(async () => {
       projects = [{ ...projects[0], assistantName: naming.desired }, projects[1]];
@@ -47,7 +47,7 @@ it("shows the published bot name until Feishu confirms the requested name", asyn
   expect(await screen.findByText("fmTeam.name_publish")).toBeVisible();
   expect(screen.getByText("fmTeam.assistant · Original")).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: "fmTeam.checkFeishuName" }));
-  expect(await screen.findByText("fmTeam.assistant · Alpha 助手")).toBeVisible();
+  expect(await screen.findByText("fmTeam.assistant · Alpha Assistant")).toBeVisible();
   expect(screen.queryByText("fmTeam.name_publish")).toBeNull();
   expect(teamApi.save).not.toHaveBeenCalled();
 });
