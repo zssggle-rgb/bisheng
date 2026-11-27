@@ -31,6 +31,27 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+it("shows the published bot name until Feishu confirms the requested name", async () => {
+  projects[0] = { ...projects[0], assistant: "alpha-bot", assistantName: "Original" };
+  const naming = { appId: "cli_alpha", name: "Original", desired: "Alpha 助手", status: "publish" as const };
+  vi.mocked(teamApi.assistant).mockResolvedValueOnce({ phase: "connected", naming })
+    .mockImplementationOnce(async () => {
+      projects = [{ ...projects[0], assistantName: naming.desired }, projects[1]];
+      return { phase: "connected", naming: { ...naming, name: naming.desired, status: "active" } };
+    });
+  openPage("projects");
+  fireEvent.click(await screen.findByRole("button", { name: /Alpha/ }));
+  fireEvent.click(screen.getByRole("button", { name: "fmTeam.renameAssistant" }));
+  fireEvent.change(screen.getByLabelText("fmTeam.feishuDisplayName"), { target: { value: naming.desired } });
+  fireEvent.click(screen.getByRole("button", { name: "fmTeam.submitName" }));
+  expect(await screen.findByText("fmTeam.name_publish")).toBeVisible();
+  expect(screen.getByText("fmTeam.assistant · Original")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "fmTeam.checkFeishuName" }));
+  expect(await screen.findByText("fmTeam.assistant · Alpha 助手")).toBeVisible();
+  expect(screen.queryByText("fmTeam.name_publish")).toBeNull();
+  expect(teamApi.save).not.toHaveBeenCalled();
+});
+
 it("removes a member only after the cross-project impact has been confirmed", async () => {
   projects[0].members.push({ user: 3, features: ["read"], dev: "", test: "" });
   vi.mocked(retirementApi.preview).mockResolvedValue({ phase: "ready", version: "opened", blockers: [],

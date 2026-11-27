@@ -58,6 +58,7 @@ export type ManagedProject = {
   guidance?: string;
   applicants?: { key: string; name: string; suffix: string }[];
   botQr?: string;
+  assistantNaming?: AssistantNaming;
   chatRoute?: boolean;
   id: string; name: string; repository: string; assistant: string; assistantName: string; knowledgeRole?: string;
   setup?: { name?: string; phase: "authorizing" | "registered" };
@@ -72,10 +73,13 @@ export type ProjectDeletion = {
   steps: { key: string; state: string }[]; error?: string; resource?: string;
   workerReceipts?: Record<string, { workspace?: string; credential?: "issuance_revoked" | "not_managed" }>;
 };
-export type AssistantOperation = "status" | "create" | "existing" | "connect";
+export type AssistantNaming = { appId: string; name: string; desired?: string;
+  status: "active" | "pending" | "console" | "publish" | "unavailable" };
+export type AssistantOperation = "status" | "create" | "existing" | "connect" | "rename" | "refresh-name";
 export type AssistantStatus = {
   phase: "empty" | "authorizing" | "expired" | "registered" | "connected";
   url?: string; name?: string; appId?: string; canConnect?: boolean;
+  naming?: AssistantNaming; suggestedName?: string;
   checks?: Partial<Record<"published" | "receive" | "reply" | "callback" | "route" | "members" | "knowledge", boolean>>;
   callback?: string;
   choices?: { id: string; name: string; appId: string; mode: "existing" | "connect" }[];

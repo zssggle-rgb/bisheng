@@ -1,8 +1,43 @@
-import { Button } from "@bisheng/ui";
+import { Button, Input } from "@bisheng/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { teamApi, type AssistantOperation } from "@/controllers/API/forgemind";
+import { teamApi, type AssistantOperation, type ManagedProject } from "@/controllers/API/forgemind";
+
+export function ProjectAssistantName({ project, disabled, refreshed }: {
+  project: ManagedProject; disabled: boolean; refreshed: () => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState("");
+  const action = useMutation((name?: string) => teamApi.assistant(project.id,
+    name === undefined ? "refresh-name" : "rename", name), {
+    onSuccess: async () => { setEditing(false); await refreshed(); },
+  });
+  const naming = action.data?.naming || project.assistantNaming;
+  const busy = disabled || action.isLoading;
+  return <section className="grid gap-2" aria-label={t("fmTeam.assistant")}>
+    <div>{t("fmTeam.assistant")} · {naming?.name || project.assistantName}</div>
+    {naming && naming.status !== "active" && <div role="status">
+      {naming.desired && <p>{t("fmTeam.desiredName")} · {naming.desired}</p>}
+      <p>{t("fmTeam.name_" + naming.status)}</p>
+      <a className="text-primary underline" href={"https://open.feishu.cn/app/" + encodeURIComponent(naming.appId) + "/baseinfo"}
+        target="_blank" rel="noopener noreferrer">{t("fmTeam.appConsole")}</a>
+    </div>}
+    {editing && <label>{t("fmTeam.feishuDisplayName")}<Input value={value} maxLength={32}
+      onChange={e => setValue(e.target.value)} /></label>}
+    <div className="flex flex-wrap gap-2">
+      {editing ? <><Button variant="outlined" disabled={busy || !value.trim()} onClick={() => action.mutate(value.trim())}>{t("fmTeam.submitName")}</Button>
+        <Button variant="text" onClick={() => setEditing(false)}>{t("cancel")}</Button></> :
+        <Button variant="outlined" disabled={busy} onClick={() => {
+          setValue(naming?.desired || naming?.name || project.assistantName); setEditing(true);
+        }}>{t("fmTeam.renameAssistant")}</Button>}
+      <Button variant="text" disabled={busy || editing} onClick={() => action.mutate(undefined)}>{t("fmTeam.checkFeishuName")}</Button>
+    </div>
+    {action.isError && <p role="alert">{t("fmTeam." + (action.error as Error)?.message,
+      { defaultValue: t("fmTeam.operationFailed") })}</p>}
+  </section>;
+}
 
 export function ProjectAssistantSetup({ project, disabled, connected }: {
   project: string; disabled: boolean; connected: () => Promise<void>;
@@ -32,6 +67,7 @@ export function ProjectAssistantSetup({ project, disabled, connected }: {
     {(status.isError || action.isError) && <p role="alert">{t("fmTeam." + ((action.error || status.error) as Error)?.message,
       { defaultValue: t("fmTeam.operationFailed") })}</p>}
     {(state?.phase === "empty" || state?.phase === "expired") && <>
+      {state.suggestedName && <small>{t("fmTeam.defaultAssistantName")} · {state.suggestedName}</small>}
       <div className="flex flex-wrap gap-2">
         <Button variant="outlined" disabled={busy} onClick={() => act("create")}>{t("fmTeam.createAssistant")}</Button>
         <Button variant="outlined" disabled={busy} onClick={() => { setChoosing(!choosing); void status.refetch(); }}>

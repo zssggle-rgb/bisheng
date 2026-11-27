@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSelectLabels } from "@/components/bs-comp/formFields/useSelectLabels";
-import { ProjectAssistantSetup } from "./ProjectAssistantSetup";
+import { ProjectAssistantName, ProjectAssistantSetup } from "./ProjectAssistantSetup";
 import { DeploymentCheck } from "./DeploymentCheck";
 import { teamApi, type Assignment, type Feature, type Host, type ManagedProject, type Member, type ProjectAssistant } from "@/controllers/API/forgemind";
 
@@ -71,7 +71,8 @@ export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved
   const [project, setProject] = useState<ManagedProject>(() => user && !initial.members.some(r => r.user === user)
     ? { ...initial, members: [...initial.members, newAssignment(user)] } : initial);
   const saving = useMutation(() => teamApi.save(project), { onSuccess: result => saved(result.id) });
-  const dirty = JSON.stringify(initial) !== JSON.stringify(project);
+  const dirty = (["name", "repository", "features", "knowledgeRole", "qaPort", "qaPath", "members"] as const)
+    .some(field => JSON.stringify(initial[field]) !== JSON.stringify(project[field]));
   const memberName = (id: number) => {
     const account = users.find(person => person.user === id);
     return account ? account.name + " · " + account.account : String(id);
@@ -88,7 +89,8 @@ export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved
         maxLength={80} onChange={e => setProject({ ...project, name: e.target.value })} /></label>
       <label className="grid gap-1.5">{t("fmTeam.repo")}<Input value={project.repository}
         placeholder="https://github.com/owner/repository" onChange={e => setProject({ ...project, repository: e.target.value })} /></label>
-      {initial.assistant ? <div>{t("fmTeam.assistant")} · {project.assistantName}</div> :
+      {initial.assistant ? <ProjectAssistantName project={initial} disabled={dirty || saving.isLoading}
+        refreshed={() => saved(initial.id)} /> :
         initial.version ? <ProjectAssistantSetup project={initial.id} disabled={dirty || saving.isLoading}
           connected={() => saved(initial.id)} /> : <p>{t("fmTeam.assistantAfterSave")}</p>}
       {initial.chatRoute === false && <small>{t("fmTeam.missingChatRoute")}</small>}
@@ -129,7 +131,7 @@ export function ProjectTeamForm({ initial, users, hosts, assistants, user, saved
           reload={() => saved(initial.id)} />}
     </section>)}
     {initial.assistant && !user && <section className="grid gap-2 border-t border-border pt-4">
-      <strong>{project.assistantName} · {t("fmTeam.botQr")}</strong>
+      <strong>{initial.assistantName} · {t("fmTeam.botQr")}</strong>
       {initial.botQr && <div className="grid justify-items-start gap-2">
         <img width={200} height={200} alt={t("fmTeam.botQr")} src={initial.botQr} />
         <p>{t("fmTeam.joinCommand")}</p>

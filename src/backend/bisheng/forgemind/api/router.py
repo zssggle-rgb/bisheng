@@ -219,7 +219,7 @@ async def project_invite(project: str, user_id: int):
 
 
 class AssistantAction(BaseModel):
-    operation: Literal["create", "existing", "connect", "status"]
+    operation: Literal["create", "existing", "connect", "status", "rename", "refresh-name"]
     candidate: str = Field(default="", max_length=100)
 
 
