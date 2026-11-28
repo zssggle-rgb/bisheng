@@ -1,10 +1,12 @@
 import json
+from contextlib import nullcontext
 from pathlib import Path
 import sqlite3
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
@@ -105,12 +107,22 @@ class HostManagerTest(unittest.TestCase):
             spawn.assert_called_once()
             with self.assertRaisesRegex(Problem, "conflict"):
                 self.m.start(dict(req, user_ip="198.51.100.8"))
+            internal = {k: v for k, v in req.items() if k != "user_ip"}
+            internal.update(request_id=str(uuid4()), name="internal-host")
+            self.assertEqual(self.m.start(internal)["phase"], "starting")
+            self.assertEqual(self.m.start(dict(internal, user_ip=None))["phase"], "starting")
+            self.assertEqual(spawn.call_count, 2)
             with self.assertRaisesRegex(Problem, "missing_request"):
                 self.m.progress(str(uuid4()))
 
     def test_partial_create_resumes_same_instance_and_pins_host(self):
-        name, rid = "build-new", str(uuid4())
-        job = dict(name=name, request_id=rid, image="worker.qcow2", user_ip="198.51.100.7", cpus=2, memory=8, disk=48, phase="starting")
+        for user_ip in (None, "198.51.100.7"):
+            with self.subTest(user_ip=user_ip):
+                self.check_partial_create(user_ip)
+
+    def check_partial_create(self, user_ip):
+        name, rid = ("build-public" if user_ip else "build-internal"), str(uuid4())
+        job = dict(name=name, request_id=rid, image="worker.qcow2", user_ip=user_ip, cpus=2, memory=8, disk=48, phase="starting")
         self.m.job_path(rid).write_text(json.dumps(job))
         self.m.cfg.update(create_script="/opt/create", pool="images", hypervisor_public_key="/public",
                           management_identity="/key", uplink="lan0")
@@ -125,7 +137,8 @@ class HostManagerTest(unittest.TestCase):
             self.assertEqual(self.m.binding(name)["uuid"], self.uid)
             self.m.build(rid)
             self.assertEqual(self.m.progress(rid)["phase"], "done")
-            self.assertEqual(sum("--user-ip" in c.args for c in commands.call_args_list), 1)
+            create, = [c.args for c in commands.call_args_list if "FM_CPUS=2" in c.args]
+            self.assertEqual(create[create.index("/public") + 1:], ("--user-ip", user_ip, "--user-uplink", "lan0") if user_ip else ())
             self.assertIn("StrictHostKeyChecking yes", (self.base/rid/"ssh_config").read_text())
 
     def test_network_reservation_updates_only_missing_view(self):
@@ -150,6 +163,31 @@ class HostManagerTest(unittest.TestCase):
                 self.m.details(self.name)
         with self.assertRaisesRegex(Problem, "invalid"):
             self.m.dispatch({"action":"shell"})
+
+    def test_disposal_reconciles_remote_success_after_transport_failure(self):
+        self.m.cfg["create_script"] = "/opt/create"
+        path = self.m.retirement_path(self.name)
+        path.parent.mkdir()
+        path.write_text(json.dumps(dict(name=self.name, phase="retired", uuid=self.uid)))
+        revision = "a"*64
+        result = dict(phase="destroyed", volumes=["disk"], deleted=[], uuid=self.uid,
+                      name=self.name, version=revision)
+        req = dict(name=self.name, operation="destroy", actor=17, confirmation=self.name, version=revision)
+        deps = {"project_console.administration": SimpleNamespace(Administration=Mock()),
+                "project_console.retirement": SimpleNamespace(host_dependencies=lambda *_: []),
+                "project_console.store": SimpleNamespace(locked=lambda *_: nullcontext())}
+        with patch.dict("sys.modules", deps), patch.object(self.m, "workers", return_value=[]), \
+                patch.object(self.m, "page_created", return_value=True), patch.object(self.m, "remote",
+                    side_effect=[json.dumps(dict(result, phase="retired")), TimeoutError(), json.dumps(result)]) as remote:
+            with self.assertRaisesRegex(Problem, "identity_changed"):
+                self.m.disposal(dict(req, confirmation="other"))
+            with self.assertRaises(TimeoutError):
+                self.m.disposal(req)
+            self.assertEqual(json.loads(path.read_bytes())["phase"], "retired")
+            self.assertEqual(self.m.disposal(dict(name=self.name, operation="destroy-preview"))["phase"], "destroyed")
+            record = json.loads(path.read_bytes())
+            self.assertEqual((record["phase"], record["destroy"]["actor"], record["deleted"]), ("destroyed", 17, []))
+            self.assertEqual([c.args[1] for c in remote.call_args_list], ["destroy-preview", "destroy", "destroy-preview"])
 
 
 if __name__ == "__main__":

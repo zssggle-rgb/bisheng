@@ -28,20 +28,20 @@ function Directory({ scope }: { scope: string }) {
   const refresh = () => void client.invalidateQueries(["fm", scope]);
   const visible = (list.data ?? []).filter(h => {
     const card = summary.data?.[h.name];
-    return (filter === "all" || hostState(h) === filter) &&
+    return (filter === "history" ? !!h.retirement : (!h.retirement || h.retirement === "pending") && (filter === "all" || hostState(h) === filter)) &&
       [h.name, card?.title, card?.user_ip].some(s => s?.toLowerCase().includes(text.trim().toLowerCase()));
   });
   const selected = list.data?.find(h => h.name === drawer?.name);
   return <main className="h-full overflow-auto bg-[#f8f8f8] px-6 py-8 dark:bg-background-main lg:px-10">
     <div className="mx-auto max-w-screen-2xl">
       <header className="mb-6 flex items-center gap-3"><h1 className="text-xl font-semibold">{t("hosts.heading")}</h1>
-        {list.isSuccess && <span className="text-sm text-text-2">{t("hosts.count", { count: list.data.length })}</span>}
+        {list.isSuccess && <span className="text-sm text-text-2">{t("hosts.count", { count: visible.length })}</span>}
         <Button className="ml-auto" variant="text" onClick={refresh} aria-label={t("hosts.refresh")}><RefreshCw size={16} /></Button>
       </header>
       <div className="mb-5 grid max-w-lg gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
         <Input prefix={<Search size={16} />} aria-label={t("hosts.search")} placeholder={t("hosts.search")} value={text} onChange={e => setText(e.target.value)} />
         <Select aria-label={t("hosts.filter")} value={filter} onChange={v => setFilter(String(v || "all"))}
-          options={["all", "online", "offline", "never", "unknown"].map(k => ({ value: k, label: t("hosts." + k) }))} />
+          options={["all", "online", "offline", "never", "unknown", "history"].map(k => ({ value: k, label: t("hosts." + k) }))} />
       </div>
       {list.isError ? <Failure retry={refresh} /> : list.isLoading ? <p role="status">{t("hosts.loading")}</p> :
         <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,265px),1fr))] gap-4">

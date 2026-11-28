@@ -11,6 +11,7 @@ describe("host directory", () => {
     expect(hostState({ ...host, online: false })).toBe("offline");
     expect(hostState({ ...host, online: null })).toBe("unknown");
     expect(hostState({ ...host, online: null, seen: null })).toBe("never");
+    expect(hostState({ ...host, retirement: "retired" })).toBe("retired");
   });
   it("checks an assigned IPv4 against the advertised user networks", () => {
     const networks = ["198.51.100.128/25", "192.0.2.0/24"];

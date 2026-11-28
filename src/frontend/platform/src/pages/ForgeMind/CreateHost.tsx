@@ -60,7 +60,7 @@ export function CreateHost({ scope, refresh, close }: Props) {
   }, [status.data?.phase, storage, client, scope]);
   const options = opts.data;
   const image = options?.images.find(i => i.id === chosen) ?? options?.images[0];
-  const validIp = inUserNetwork(ip, options?.networks ?? []);
+  const validIp = !ip || inUserNetwork(ip, options?.networks ?? []);
   const validName = /^[a-z][a-z0-9-]{1,60}[a-z0-9]$/.test(name) && !name.startsWith("forgemind-image-build-");
   const job = status.data;
   const errorText = (error?: string | null) => t("hosts." + error, { defaultValue: t("hosts.operation_failed") });
@@ -82,7 +82,7 @@ export function CreateHost({ scope, refresh, close }: Props) {
     e.preventDefault();
     if (!validName || !validIp || !image || create.isLoading) return;
     // Retain the request identity across ambiguous transport failures and remounts.
-    const payload = { name, image: image.id, user_ip: ip, cpus: +cpus, memory: +memory, disk: +disk };
+    const payload = { name, image: image.id, user_ip: ip || null, cpus: +cpus, memory: +memory, disk: +disk };
     const signature = JSON.stringify(payload);
     const prior = sessionStorage.getItem(storage + "/pending");
     const rid = prior?.endsWith(signature) ? prior.slice(0, 36) : requestId();
@@ -96,7 +96,7 @@ export function CreateHost({ scope, refresh, close }: Props) {
         options={options.images.map(i => ({ label: i.label, value: i.id }))}
         onChange={v => { setChosen(String(v)); const opt = options.images.find(i => i.id === v); if (opt && +disk < opt.minimum) setDisk(String(opt.minimum)); }} />
       {!image && <small>{t("hosts.noImage")}</small>}</div>
-    <label className="grid gap-2">{t("hosts.userIp")}<Input required value={ip} onChange={e => setIp(e.target.value.trim())} placeholder={t("hosts.ipHint")} /></label>
+    <label className="grid gap-2">{t("hosts.optionalUserIp")}<Input value={ip} onChange={e => setIp(e.target.value.trim())} placeholder={t("hosts.ipHint")} /></label>
     <p className="-mt-3 text-xs text-text-2">{t("hosts.networks")} · {options.networks.join(", ") || t("hosts.unconfigured")}</p>
     {ip && !validIp && <p role="status" className="-mt-2 text-sm text-text-2">{t("hosts.invalid_address")}</p>}
     <div className="grid grid-cols-3 gap-3">
@@ -107,6 +107,6 @@ export function CreateHost({ scope, refresh, close }: Props) {
     </div>
     {create.isError && <p role="alert">{errorText((create.error as Error)?.message)}</p>}
     <div className="mt-auto flex justify-end gap-2 pt-6"><Button type="button" variant="outlined" onClick={close}>{t("hosts.cancel")}</Button>
-      <Button type="submit" color="primary" disabled={create.isLoading || !image || !options.networks.length || !validIp || !validName}>{t("hosts.create")}</Button></div>
+      <Button type="submit" color="primary" disabled={create.isLoading || !image || !validIp || !validName}>{t("hosts.create")}</Button></div>
   </form>;
 }

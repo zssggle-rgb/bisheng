@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { Host } from "@/controllers/API/forgemind";
 
 export function hostState(host: Host) {
+  if (host.retirement) return host.retirement;
   if (!host.seen) return "never";
   if (host.online === null) return "unknown";
   return host.online ? "online" : "offline";

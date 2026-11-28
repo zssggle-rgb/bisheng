@@ -10,7 +10,7 @@ import { bsConfirm } from "@/components/bs-ui/alertDialog/useConfirm";
 import { useSelectLabels } from "@/components/bs-comp/formFields/useSelectLabels";
 import { locationContext } from "@/contexts/locationContext";
 import i18next from "i18next";
-import { GanttChartIcon, Lock, MoonStar, Server, Sun } from "lucide-react";
+import { Folder, GanttChartIcon, Lock, MoonStar, Server, Sun, Users } from "lucide-react";
 import { useHostAccess } from "@/controllers/API/forgemind";
 
 import { useDshBrowserConfig } from "@/hooks/useDshBrowserConfig";
@@ -53,6 +53,7 @@ export default function MainLayout() {
 
     const { user, setUser } = useContext(userContext);
     const { access: hostAccess } = useHostAccess();
+    const { access: teamAccess } = useHostAccess(true);
     const { language, options, changLanguage, t } = useLanguage(user);
     const selectLabels = useSelectLabels();
     const languageOptions = Object.entries(options).map(([value, label]) => ({ value, label }));
@@ -269,10 +270,20 @@ export default function MainLayout() {
                                 </NavLink>
                             )}
                             {hostAccess.data && (
+                                <>
                                 <NavLink to="/forgemind/hosts" className={pendingNavClass("forgemind")}>
                                     <Server />
                                     <span>{t("hosts.heading")}</span>
                                 </NavLink>
+                                {teamAccess.data && <>
+                                <NavLink to="/forgemind/members" className={pendingNavClass("forgemind")}>
+                                    <Users /><span>{t("fmTeam.members")}</span>
+                                </NavLink>
+                                <NavLink to="/forgemind/projects" className={pendingNavClass("forgemind")}>
+                                    <Folder /><span>{t("fmTeam.projects")}</span>
+                                </NavLink>
+                                </>}
+                                </>
                             )}
                             {showAdminNav("knowledge") && (
                                 <NavLink

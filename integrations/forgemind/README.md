@@ -33,13 +33,21 @@ Install `host_manager.py` on the Autoloop controller as that executable. Run it 
 
 Set the real paths and network interface at the site. The controller's own OpenSSH alias `hypervisor` uses a pinned host key and the existing libvirt operator account. The hypervisor needs the dual-NIC ForgeMind `create-guest.sh` with its adjacent `user_network.py`, the allowed template pool, and the controller's **public** management key. The controller needs the matching private management identity and ForgeMind's `connect.py`. Optionally specify the site's approved `model_settings` path on the controller. Provision `state` as a directory writable only by the controller account. It stores private creation receipts and per-instance SSH profiles. Hub registration and libvirt stay authoritative for live state.
 
+When restricting SSH on the hypervisor, permit the create recipe with its three positional arguments, and the same invocation with the site's validated `--user-ip` and `--user-uplink` pair. Both use platform DHCP for enrollment. Only the second invocation attaches the user network.
+
 ## Deploying on BiSheng v3.0.2
 
 Build the administrator frontend against the site's **v3.0.2** source and lockfile. Its management-session API differs from the v3.1 frontend. Apply the host menu and route changes to the release layout and routes, copy the ForgeMind page and API client, and merge only the `hosts` translation object into each release locale. Keep the release's original dashboards and user workspace.
 
 Backport the ForgeMind API package and register its router on the existing v1 router. The v3.0.2 middleware and request client use explicit management route lists. Apply [the v3.0.2 scope patch](compat/3.0.2-management-scope.patch) to both before deployment. The owner and selected management tenant must match. Writes carry the native expected-tenant header and fail closed if the management selection changes. Verify the existing dashboard, the authenticated owner menu, member denial, and a creation on an allocated address after deployment.
 
+## Member and project management
+
+Deploy the matching ForgeMind project-console code alongside this controller. Run the fixed command with that Python environment and the ForgeMind checkout on its import path. Set `FORGEMIND_PROJECTS_ENABLED=1` on the BiSheng API after configuring the assistant catalog on the controller. The project and member screens share the host page's authorized owner and management tenant. Disabling an account or removing its active membership invokes the same controller to revoke Feishu access. On v3.0.2, backport both screens, the native account creation callback, the account lifecycle hooks and the `fmTeam` locale entries together with the management-scope patch. Commissioning settings and the development-worker QA recipe are described in the ForgeMind repository in `docs/bisheng-member-project-integration.md`.
+
 ## Existing hosts and recovery
+
+The member and host detail pages expose removal and retirement to the configured management owner. Retired registrations appear in the host history filter. For a VM created through this console, the owner can then confirm VM destruction and permanent volume deletion in two separate dialogs. Install ForgeMind's `images/worker/dispose-guest.py` beside the hypervisor creation script with execute permission and the system Python libvirt bindings. The forced SSH command needs the exact helper and four validated arguments described in ForgeMind's `docs/bisheng-member-project-integration.md`.
 
 Any registered worker is visible, including an external worker without a libvirt domain. Same-name domains can be read. For an existing ForgeMind acceptance receipt, set `bindings[worker].receipt` to the controller-local JSON path. The reader checks `hub_worker` and `vm.domain` and uses the recorded `vm.uuid` and image. For older hosts, supply the verified `uuid` and optional `image` directly. To enable connection checks add the pinned `ssh_config` resolving the worker name to its actual guest. Hosts created through the page receive their binding automatically.
 

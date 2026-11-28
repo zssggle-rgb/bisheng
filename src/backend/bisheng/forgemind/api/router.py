@@ -1,14 +1,17 @@
+import os
 from ipaddress import IPv4Address
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 from bisheng.common.dependencies.user_deps import UserPayload
 from bisheng.common.errcode.http_error import ServerError, UnAuthorizedError
 from bisheng.common.schemas.api import resp_200
 from bisheng.core.context.tenant import get_current_tenant_id
-from bisheng.forgemind.domain.service import ControllerUnavailable, owner_enabled, request_controller
+from bisheng.forgemind.domain.service import ControllerUnavailable, owner_enabled, request_controller, tenant_accounts
 
 BASE_PATH = "/forgemind/hosts"
 router = APIRouter(tags=["ForgeMind"])
@@ -29,7 +32,7 @@ protected = APIRouter(dependencies=[Depends(require_owner)])
 class CreateHost(BaseModel):
     name: str = Field(pattern=r"^[a-z][a-z0-9-]{1,60}[a-z0-9]$")
     image: str = Field(min_length=1, max_length=150)
-    user_ip: IPv4Address
+    user_ip: IPv4Address | None = None
     cpus: int = Field(ge=1, le=128)
     memory: int = Field(ge=1, le=512)
     disk: int = Field(ge=1, le=4096)
@@ -44,6 +47,14 @@ class Title(Instance):
     title: str = Field(min_length=1, max_length=80)
 
 
+class ConfirmVersion(BaseModel):
+    version: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class ConfirmHost(ConfirmVersion):
+    confirmation: str = Field(min_length=1, max_length=128)
+
+
 def call(action, **fields):
     try:
         return resp_200(data=request_controller(action, **fields))
@@ -53,7 +64,7 @@ def call(action, **fields):
 
 @router.get(BASE_PATH + "/access")
 def access(allowed: bool = Depends(enabled)):
-    return resp_200(data={"enabled": allowed})
+    return resp_200(data={"enabled": allowed, "projects": allowed and os.getenv("FORGEMIND_PROJECTS_ENABLED") == "1"})
 
 
 @protected.get("")
@@ -106,4 +117,142 @@ def connect(name: str, data: Instance):
     return call("connect", name=name, uuid=str(data.uuid))
 
 
+@protected.get("/instances/{name}/retirement")
+def host_retirement(name: str):
+    return call("host-retirement", name=name, operation="preview")
+
+
+@protected.post("/instances/{name}/retirement")
+def retire_host(name: str, data: ConfirmVersion, user: UserPayload = Depends(UserPayload.get_login_user)):
+    return call("host-retirement", name=name, operation="retire", version=data.version, actor=user.user_id)
+
+
+@protected.get("/instances/{name}/disposal/{kind}")
+def disposal_preview(name: str, kind: Literal["destroy", "purge"]):
+    return call("host-disposal", name=name, operation=kind + "-preview")
+
+
+@protected.post("/instances/{name}/disposal/{kind}")
+def dispose_host(name: str, kind: Literal["destroy", "purge"], data: ConfirmHost,
+                 user: UserPayload = Depends(UserPayload.get_login_user)):
+    return call("host-disposal", name=name, operation=kind, version=data.version,
+                confirmation=data.confirmation, actor=user.user_id)
+
+
 router.include_router(protected, prefix=BASE_PATH)
+
+
+class Assignment(BaseModel):
+    user: int = Field(gt=0)
+    features: list[Literal["delegate", "read"]] = Field(max_length=2)
+    dev: str = Field(default="", pattern=r"^(?:[a-zA-Z0-9][a-zA-Z0-9._-]{0,79})?$")
+    test: str = Field(default="", pattern=r"^(?:[a-zA-Z0-9][a-zA-Z0-9._-]{0,79})?$")
+    legacy: str = Field(default="", pattern=r"^(?:[a-f0-9]{24})?$")
+    recipient: str = Field(default="", max_length=254)
+    confirm: str = Field(default="", pattern=r"^(?:[a-f0-9]{24})?$")
+
+
+class ProjectChange(BaseModel):
+    assistant: str = Field(default="", max_length=100)
+    knowledgeRole: str = Field(default="", max_length=100)
+    name: str = Field(min_length=1, max_length=80)
+    repository: str = Field(default="", max_length=300)
+    version: str = Field(pattern=r"^(?:[0-9a-f]{64})?$")
+    qaPort: int | None = Field(default=None, ge=1, le=65535)
+    qaPath: str = Field(default="", max_length=256, pattern=r"^(?:/[a-zA-Z0-9_./%-]*)?$")
+    members: list[Assignment] = Field(max_length=500)
+
+
+def require_projects(allowed: bool = Depends(enabled)):
+    if not allowed or os.getenv("FORGEMIND_PROJECTS_ENABLED") != "1":
+        raise UnAuthorizedError.http_exception()
+
+
+teams = APIRouter(prefix="/forgemind", dependencies=[Depends(require_projects)])
+
+
+@teams.get("/members")
+async def members():
+    return resp_200(data={"result": list((await tenant_accounts(get_current_tenant_id())).values())})
+
+
+@teams.get("/projects")
+def projects():
+    return call("project-directory")
+
+
+async def member_cleanup(user_id, **fields):
+    # The configured owner and tenant guard above covers this controller's receipts.
+    active = user_id in await tenant_accounts(get_current_tenant_id())
+    kwargs = {} if active else {"pending_only": True}
+    result = await run_in_threadpool(call, "member-removal", user=user_id, **fields, **kwargs)
+    if not active and result.data.get("error") == "unauthorized":
+        raise UnAuthorizedError.http_exception()
+    return result
+
+
+@teams.get("/members/{user_id}/removal")
+async def member_removal(user_id: int):
+    return await member_cleanup(user_id, operation="preview")
+
+
+@teams.post("/members/{user_id}/removal")
+async def remove_member(user_id: int, data: ConfirmVersion, user: UserPayload = Depends(UserPayload.get_login_user)):
+    if user_id == user.user_id:
+        raise UnAuthorizedError.http_exception()
+    return await member_cleanup(user_id, operation="remove", version=data.version, actor=user.user_id)
+
+
+@teams.put("/projects/{project}")
+async def save_project(project: str, change: ProjectChange):
+    accounts = await tenant_accounts(get_current_tenant_id())
+    if any(row.user not in accounts for row in change.members):
+        raise UnAuthorizedError.http_exception()
+    return await run_in_threadpool(call, "project-save", project=project, change=change.model_dump())
+
+
+@teams.post("/projects/{project}/invites/{user_id}")
+async def project_invite(project: str, user_id: int):
+    if user_id not in await tenant_accounts(get_current_tenant_id()):
+        raise UnAuthorizedError.http_exception()
+    return await run_in_threadpool(call, "project-invite", project=project, user=user_id)
+
+
+class AssistantAction(BaseModel):
+    operation: Literal["create", "existing", "connect", "status", "rename", "refresh-name"]
+    candidate: str = Field(default="", max_length=100)
+
+
+class ProjectDeletion(BaseModel):
+    version: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+@teams.get("/projects/{project}/deletion")
+def project_deletion_preview(project: str):
+    return call("project-deletion", project=project, operation="preview")
+
+
+@teams.delete("/projects/{project}")
+def delete_project(project: str, change: ProjectDeletion, user: UserPayload = Depends(UserPayload.get_login_user)):
+    return call("project-deletion", project=project, operation="delete", version=change.version, actor=user.user_id)
+
+
+@teams.post("/projects/{project}/assistant")
+def project_assistant(project: str, change: AssistantAction):
+    return call("project-assistant", project=project, **change.model_dump())
+
+
+class DeploymentAction(BaseModel):
+    operation: Literal["status", "deploy", "probe", "prepare"]
+    version: str = Field(pattern=r"^[0-9a-f]{64}$")
+    candidate: str = Field(default="", pattern=r"^(?:[0-9a-f]{40})?$")
+
+
+@teams.post("/projects/{project}/members/{user_id}/deployment")
+async def member_deployment(project: str, user_id: int, change: DeploymentAction):
+    if user_id not in await tenant_accounts(get_current_tenant_id()):
+        raise UnAuthorizedError.http_exception()
+    return await run_in_threadpool(call, "project-deployment", project=project, user=user_id, **change.model_dump())
+
+
+router.include_router(teams)
