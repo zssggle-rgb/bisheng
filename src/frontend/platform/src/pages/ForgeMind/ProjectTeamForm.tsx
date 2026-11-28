@@ -29,8 +29,10 @@ function Features({ value, allowed, change }: {
 }) {
   const { t } = useTranslation();
   return <div className="flex gap-4">{features.map(f => <label key={f} className="flex items-center gap-1.5">
-    <input type="checkbox" checked={value.includes(f)} disabled={!allowed.includes(f)}
-      onChange={e => change(e.target.checked ? [...value, f] : value.filter(x => x !== f))} />
+    <input type="checkbox" checked={value.includes(f) || (f === "read" && value.includes("delegate"))}
+      disabled={!allowed.includes(f) || (f === "read" && value.includes("delegate")) || (f === "delegate" && !allowed.includes("read"))}
+      onChange={e => change(f === "delegate" ? (e.target.checked ? ["delegate", "read"] : ["read"])
+        : e.target.checked ? ["read"] : [])} />
     {t("fmTeam." + f)}</label>)}</div>;
 }
 function AssignmentFields({ row, project, hosts, update }: {

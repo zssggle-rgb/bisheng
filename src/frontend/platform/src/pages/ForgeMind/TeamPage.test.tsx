@@ -202,6 +202,8 @@ it("searches existing accounts, then saves a project assignment for the selected
   fireEvent.click(screen.getByRole("combobox", { name: "fmTeam.assignProject" }));
   fireEvent.click(await screen.findByRole("option", { name: "Alpha" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "fmTeam.delegate" }));
+  expect(screen.getByRole("checkbox", { name: "fmTeam.read" })).toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "fmTeam.read" })).toBeDisabled();
   for (const [field, worker] of [["dev", "dev-1"], ["test", "test-1"]]) {
     const picker = screen.getByRole("combobox", { name: "fmTeam." + field });
     await userEvent.click(picker);
@@ -210,7 +212,7 @@ it("searches existing accounts, then saves a project assignment for the selected
   }
   fireEvent.click(screen.getByRole("button", { name: "fmTeam.save" }));
   await waitFor(() => expect(teamApi.save).toHaveBeenCalledWith(expect.objectContaining({ id: "Alpha",
-    members: [{ user: 3, features: ["delegate"], dev: "dev-1", test: "test-1" }] })));
+    members: [{ user: 3, features: ["delegate", "read"], dev: "dev-1", test: "test-1" }] })));
   expect(await screen.findByRole("region", { name: "Alpha" })).toHaveTextContent("dev-1");
   expect(screen.queryByRole("combobox", { name: "fmTeam.existingUser" })).toBeNull();
 });
@@ -227,12 +229,14 @@ it("shows every assignment immediately, preserving the other project and other m
   expect(beta.getByText("fmTeam.active")).toBeVisible();
   expect(screen.queryByRole("combobox")).toBeNull();
   fireEvent.click(alpha.getByRole("button", { name: "fmTeam.edit" }));
-  fireEvent.click(alpha.getByRole("checkbox", { name: "fmTeam.read" }));
+  fireEvent.click(alpha.getByRole("checkbox", { name: "fmTeam.delegate" }));
+  expect(alpha.getByRole("checkbox", { name: "fmTeam.read" })).toBeChecked();
+  expect(alpha.getByRole("checkbox", { name: "fmTeam.read" })).toBeEnabled();
   vi.mocked(teamApi.save).mockRejectedValueOnce(new Error("stale_project"));
   fireEvent.click(alpha.getByRole("button", { name: "fmTeam.save" }));
   expect(await alpha.findByRole("alert")).toHaveTextContent("fmTeam.stale_project");
   expect(teamApi.save).toHaveBeenCalledWith(expect.objectContaining({ id: "Alpha", version: "Alpha-v1",
-    members: [expect.objectContaining({ user: 3, features: ["delegate", "read"] }), projects[0].members[1]] }));
+    members: [expect.objectContaining({ user: 3, features: ["read"], dev: "", test: "" }), projects[0].members[1]] }));
   expect(beta.getByText("fmTeam.active")).toBeVisible();
 });
 
